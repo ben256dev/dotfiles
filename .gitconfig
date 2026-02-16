@@ -1,0 +1,8 @@
+[user]
+	email = benjamin@ben256.com
+	name = ben256dev
+[init]
+	defaultBranch = main
+[core]
+	editor = vi
+	excludesFile = ~/.gitignore

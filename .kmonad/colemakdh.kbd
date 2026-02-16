@@ -1,0 +1,80 @@
+(defcfg
+	input (device-file "/dev/input/by-path/platform-i8042-serio-0-event-kbd")
+	output (uinput-sink "Kmonad output")
+	fallthrough true
+)
+
+(defsrc
+  esc  f1   f2   f3   f4   f5   f6   f7   f8   f9   f10  f11  f12
+  grv  1    2    3    4    5    6    7    8    9    0    -    =    bspc
+  tab  q    w    e    r    t    y    u    i    o    p    [    ]    \
+  caps a    s    d    f    g    h    j    k    l    ;    '    ret
+  lsft z    x    c    v    b    n    m    ,    .    /    rsft
+  lctl lmet lalt           spc            ralt rctl
+)
+
+(defalias
+   altnum (layer-toggle num-layer)
+   navkey (layer-toggle nav-layer)
+   defkey (layer-switch ben-colemak-dh)
+
+   ma (tap-hold-next-release 180 a lmet)
+   mr (tap-hold-next-release 180 r lalt)
+   ms (tap-hold-next-release 180 s lctl)
+   mt (tap-hold-next-release 180 t lsft)
+
+   mn (tap-hold-next-release 180 n rsft)
+   me (tap-hold-next-release 180 e rctl)
+   mi (tap-hold-next-release 180 i ralt)
+   mo (tap-hold-next-release 180 o rmet)
+
+   mx (tap-hold-next-release 180 x C-bspc)
+
+   toqw (tap-hold-next-release 1000 lmet (layer-switch qwerty))
+   tocol (tap-hold-next-release 1000 lmet (layer-switch ben-colemak-dh))
+)
+
+(deflayer ben-colemak-dh
+  _    f1   f2   f3   f4   f5   f6   f7   f8   f9   f10  f11  f12
+  grv  !    @    #    $    %    ^    &    *   \(   \)    -    =    @defkey
+  _    q    w    f    p    b    j    l    u    y    '   bspc  ]    \
+  esc @ma  @mr  @ms  @mt   g    m   @mn  @me  @mi  @mo   ;    ret
+@navkey @mx  c    d    v    z    k    h    ,    .    /   @navkey
+@defkey @toqw @altnum    spc        @altnum  @defkey
+)
+
+(deflayer num-layer
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    f1   f2   f3 A-f4   f5   f6   f7   f8   f9   f10  f11  f12  _
+  _    !    @    #    $    %    ^    &    *   \(   \)    _    _    _
+  -    1    2    3    4    5    6    7    8    9    0    _    _
+  _    [    ]    +    {    }    _    =    _    _    _   @defkey
+@defkey @defkey @defkey    \_         @altnum  @defkey
+)
+
+(deflayer nav-layer
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _  C-bspc _    _    _    _    _   pgup  _    _    _    _    _
+  _    _    _    _    _    _   lft  down  up  rght  _    _    _
+  _    _    _   pgdn  _    _    _    _    _    _    _    _
+  _    _    _              bspc          @altnum  _
+)
+
+(deflayer ext-layer
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+@defkey _   _    _    _    _    _    _    _    _    _    _    _    _
+@defkey _   _    _    _    _    _    _    _    _    _    _    _
+@defkey _   _    _    _    _    _    _    _    _    _   @defkey
+@defkey @defkey @defkey    C-bspc       @altnum  @defkey
+)
+
+(deflayer qwerty
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    @tocol _              _             _    _
+)
