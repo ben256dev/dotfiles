@@ -121,7 +121,7 @@ if [ -d "$USER_HOME/dotfiles" ]; then
     ok "Dotfiles already present"
 else
     gum spin --spinner line --title "Cloning dotfiles" -- \
-        git clone -q -b nvim https://github.com/ben256dev/dotfiles.git "$USER_HOME/dotfiles"
+        git clone -q -b main https://github.com/ben256dev/dotfiles.git "$USER_HOME/dotfiles"
     ok "Cloned dotfiles"
 fi
 
@@ -140,6 +140,7 @@ mkdir -p "$USER_HOME/.ssh"
 ln -sf "$USER_HOME/dotfiles/.ssh/config"            "$USER_HOME/.ssh/config"
 ln -snf "$USER_HOME/dotfiles/.config/ghostty"       "$USER_HOME/.config/ghostty"
 ln -sf "$USER_HOME/dotfiles/.dircolors"             "$USER_HOME/.dircolors"
+ln -sf "$USER_HOME/dotfiles/.xinitrc"             "$USER_HOME/.xinitrc"
 ok "Linked dotfiles"
 
 # Set up ghostty repo
@@ -181,20 +182,6 @@ mkdir -p "$USER_HOME/Pictures"
 gum spin --spinner line --title "Downloading wallpaper" -- \
     curl -sL "https://picsum.photos/1920/1080" -o "$USER_HOME/Pictures/wallpaper.jpg"
 ok "Downloaded wallpaper"
-
-# Create xinitrc
-cat > "$USER_HOME/.xinitrc" << EOF
-#!/bin/sh
-export DISPLAY=:0
-dbus-launch --exit-with-session &
-xset s off; xset -dpms; xset s noblank
-feh --bg-scale $USER_HOME/Pictures/wallpaper.jpg &
-picom --backend xrender &
-sxhkd &
-exec bspwm
-EOF
-chmod +x "$USER_HOME/.xinitrc"
-ok "Created ~/.xinitrc"
 
 # Clean up SSH logins
 if [ -f /etc/ssh/sshd_config ]; then
