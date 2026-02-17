@@ -183,7 +183,7 @@ ok "Configured sxhkd"
 # Download wallpaper (gum spinner)
 mkdir -p "$USER_HOME/Pictures"
 gum spin --spinner line --title "Downloading wallpaper" -- \
-    curl -sL "https://picsum.photos/1920/1080" -o "$USER_HOME/Pictures/wallpaper.jpg"
+    curl -sL "https://unsplash.com/photos/SowPhAbCbcs/download?force=true" -o "$USER_HOME/Pictures/wallpaper.jpg"
 ok "Downloaded wallpaper"
 
 # Clean up SSH logins
