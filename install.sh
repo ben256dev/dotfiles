@@ -126,31 +126,27 @@ else
 fi
 
 # Link dotfiles
-ln -sf "$USER_HOME/dotfiles/.bashrc"               "$USER_HOME/.bashrc"
-ln -sf "$USER_HOME/dotfiles/.bash_aliases"         "$USER_HOME/.bash_aliases"
-ln -sf "$USER_HOME/dotfiles/.gitconfig"            "$USER_HOME/.gitconfig"
-ln -sf "$USER_HOME/dotfiles/.vimrc"                "$USER_HOME/.vimrc"
-ln -sf "$USER_HOME/dotfiles/.tmux.conf"            "$USER_HOME/.tmux.conf"
-ln -snf "$USER_HOME/dotfiles/.vim"                 "$USER_HOME/.vim"
-ln -snf "$USER_HOME/dotfiles/.tmux"                "$USER_HOME/.tmux"
-ln -snf "$USER_HOME/dotfiles/.kmonad"              "$USER_HOME/.kmonad"
+ln -sf "$USER_HOME/dotfiles/.bashrc"                "$USER_HOME/.bashrc"
+ln -sf "$USER_HOME/dotfiles/.bash_aliases"          "$USER_HOME/.bash_aliases"
+ln -sf "$USER_HOME/dotfiles/.gitconfig"             "$USER_HOME/.gitconfig"
+ln -sf "$USER_HOME/dotfiles/.vimrc"                 "$USER_HOME/.vimrc"
+ln -sf "$USER_HOME/dotfiles/.tmux.conf"             "$USER_HOME/.tmux.conf"
+ln -snf "$USER_HOME/dotfiles/.vim"                  "$USER_HOME/.vim"
+ln -snf "$USER_HOME/dotfiles/.tmux"                 "$USER_HOME/.tmux"
+ln -snf "$USER_HOME/dotfiles/.kmonad"               "$USER_HOME/.kmonad"
 mkdir -p "$USER_HOME/.config"
-ln -snf "$USER_HOME/dotfiles/.config/nvim"         "$USER_HOME/.config/nvim"
+ln -snf "$USER_HOME/dotfiles/.config/nvim"          "$USER_HOME/.config/nvim"
 mkdir -p "$USER_HOME/.ssh"
-ln -sf "$USER_HOME/dotfiles/.ssh/config"           "$USER_HOME/.ssh/config"
-mkdir -p "$USER_HOME/ghostty"
-mkdir -p "$USER_HOME/ghostty/themes"
-ln -sf "$USER_HOME/dotfiles/ghostty/themes/ben256" "$USER_HOME/ghostty/themes/ben256"
-ln -snf "$USER_HOME/.config/ghostty"               "$USER_HOME/.config/ghostty"
-ln -sf "$USER_HOME/dotfiles/.dircolors"            "$USER_HOME/.dircolors"
+ln -sf "$USER_HOME/dotfiles/.ssh/config"            "$USER_HOME/.ssh/config"
+ln -snf "$USER_HOME/dotfiles/.config/ghostty"       "$USER_HOME/.config/ghostty"
+ln -sf "$USER_HOME/dotfiles/.dircolors"             "$USER_HOME/.dircolors"
 ok "Linked dotfiles"
 
-# Set up ghostty
-curl -sS https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
-
-echo "deb https://debian.griffo.io/apt $(lsb_release -sc 2>/dev/null) main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list
-
-sudo apt update
+# Set up ghostty repo
+curl -sS https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/debian.griffo.io.gpg > /dev/null 2>&1
+echo "deb https://debian.griffo.io/apt $(lsb_release -sc 2>/dev/null) main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
+gum spin --spinner line --title "Updating package lists" -- sudo apt update -qq
+ok "Added ghostty repo"
 
 PACKAGES=(
     zig
@@ -165,8 +161,7 @@ PACKAGES=(
     tigerbeetle
 )
 
-install_packages
-ok "Installed ghostty"
+install_packages "${PACKAGES[@]}"
 
 # Set up bspwm
 mkdir -p "$USER_HOME/.config/bspwm"
