@@ -84,33 +84,37 @@ PACKAGES=(
 gum spin --spinner line --title "Updating package lists" -- sudo apt update -qq
 ok "Updated package lists"
 
-# Install packages (gum spinner with progress bar, skip already installed)
-install=()
-for pkg in "${PACKAGES[@]}"; do
-    if ! dpkg -s "$pkg" &>/dev/null; then
-        install+=("$pkg")
-    fi
-done
-skipped=$(( ${#PACKAGES[@]} - ${#install[@]} ))
-total=${#install[@]}
-if [ "$total" -eq 0 ]; then
-    ok "All ${#PACKAGES[@]} packages already installed"
-else
-    current=0
-    for pkg in "${install[@]}"; do
-        current=$((current + 1))
-        pct=$((current * 100 / total))
-        filled=$((pct / 5))
-        empty=$((20 - filled))
-        bar=$(printf '█%.0s' $(seq 1 $filled 2>/dev/null))
-        pad=$(printf '░%.0s' $(seq 1 $empty 2>/dev/null))
-        if ! gum spin --spinner line --title "Installing packages [${current}/${total}] ${bar}${pad} ${pkg}" -- \
-            sudo apt install --yes -qq "$pkg"; then
-            fail "Failed to install ${pkg}"
+install_packages() {
+    local pkgs=("$@")
+    local to_install=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg -s "$pkg" &>/dev/null; then
+            to_install+=("$pkg")
         fi
     done
-    ok "Installed ${total} packages (${skipped} already installed)"
-fi
+    local skipped=$(( ${#pkgs[@]} - ${#to_install[@]} ))
+    local total=${#to_install[@]}
+    if [ "$total" -eq 0 ]; then
+        ok "All ${#pkgs[@]} packages already installed"
+    else
+        local current=0
+        for pkg in "${to_install[@]}"; do
+            current=$((current + 1))
+            pct=$((current * 100 / total))
+            filled=$((pct / 5))
+            empty=$((20 - filled))
+            bar=$(printf '█%.0s' $(seq 1 $filled 2>/dev/null))
+            pad=$(printf '░%.0s' $(seq 1 $empty 2>/dev/null))
+            if ! gum spin --spinner line --title "Installing packages [${current}/${total}] ${bar}${pad} ${pkg}" -- \
+                sudo apt install --yes -qq "$pkg"; then
+                fail "Failed to install ${pkg}"
+            fi
+        done
+        ok "Installed ${total} packages (${skipped} already installed)"
+    fi
+}
+
+install_packages "${PACKAGES[@]}"
 
 # Clone dotfiles (gum spinner)
 if [ -d "$USER_HOME/dotfiles" ]; then
