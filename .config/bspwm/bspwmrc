@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# Autostart
+sxhkd &
+feh --bg-scale ~/Pictures/wallpaper.jpg &
+picom --config ~/.config/picom/picom.conf &
+
+# Monitor
+bspc monitor -d 1 2 3 4 5 6 7 8 9
+
+# Window appearance
+bspc config border_width         2
+bspc config window_gap           12
+bspc config top_padding          0
+bspc config bottom_padding       0
+bspc config left_padding         0
+bspc config right_padding        0
+
+# Colors — jungle greens
+bspc config normal_border_color   "#1a3a1a"
+bspc config active_border_color   "#2d6b2d"
+bspc config focused_border_color  "#00FF94"
+bspc config presel_feedback_color "#00AA55"
+
+# Behavior
+bspc config split_ratio           0.52
+bspc config borderless_monocle    true
+bspc config gapless_monocle       true
+bspc config focus_follows_pointer true
+bspc config click_to_focus        button1
+bspc config single_monocle        true

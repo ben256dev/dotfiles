@@ -167,18 +167,12 @@ PACKAGES=(
 
 install_packages "${PACKAGES[@]}"
 
-# Set up bspwm
-mkdir -p "$USER_HOME/.config/bspwm"
-cp /usr/share/doc/bspwm/examples/bspwmrc "$USER_HOME/.config/bspwm/bspwmrc"
-chmod +x "$USER_HOME/.config/bspwm/bspwmrc"
-sed -i 's/urxvt/ghostty/g; s/xterm/ghostty/g' "$USER_HOME/.config/bspwm/bspwmrc"
-ok "Configured bspwm"
-
-# Set up sxhkd
-mkdir -p "$USER_HOME/.config/sxhkd"
-cp /usr/share/doc/bspwm/examples/sxhkdrc "$USER_HOME/.config/sxhkd/sxhkdrc"
-sed -i 's/urxvt/ghostty/g; s/xterm/ghostty/g; s/dmenu_run/rofi -show drun -theme ben256/g' "$USER_HOME/.config/sxhkd/sxhkdrc"
-ok "Configured sxhkd"
+# Link bspwm, sxhkd, picom configs
+ln -snf "$USER_HOME/dotfiles/.config/bspwm"         "$USER_HOME/.config/bspwm"
+chmod +x "$USER_HOME/dotfiles/.config/bspwm/bspwmrc"
+ln -snf "$USER_HOME/dotfiles/.config/sxhkd"         "$USER_HOME/.config/sxhkd"
+ln -snf "$USER_HOME/dotfiles/.config/picom"          "$USER_HOME/.config/picom"
+ok "Configured bspwm, sxhkd, picom"
 
 # Download wallpaper (gum spinner)
 mkdir -p "$USER_HOME/Pictures"
