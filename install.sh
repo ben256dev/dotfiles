@@ -72,12 +72,12 @@ PACKAGES=(
     picom
     suckless-tools
     dbus-x11
-    kitty
     fzf
     bspwm
     sxhkd
     firefox-esr
     fastfetch
+    tree
 )
 
 # Update package lists (gum spinner)
@@ -126,51 +126,59 @@ else
 fi
 
 # Link dotfiles
-ln -sf "$USER_HOME/dotfiles/.bashrc"       "$USER_HOME/.bashrc"
-ln -sf "$USER_HOME/dotfiles/.bash_aliases" "$USER_HOME/.bash_aliases"
-ln -sf "$USER_HOME/dotfiles/.gitconfig"    "$USER_HOME/.gitconfig"
-ln -sf "$USER_HOME/dotfiles/.vimrc"        "$USER_HOME/.vimrc"
-ln -sf "$USER_HOME/dotfiles/.tmux.conf"    "$USER_HOME/.tmux.conf"
-ln -snf "$USER_HOME/dotfiles/.vim"         "$USER_HOME/.vim"
-ln -snf "$USER_HOME/dotfiles/.tmux"        "$USER_HOME/.tmux"
-ln -snf "$USER_HOME/dotfiles/.kmonad"      "$USER_HOME/.kmonad"
+ln -sf "$USER_HOME/dotfiles/.bashrc"               "$USER_HOME/.bashrc"
+ln -sf "$USER_HOME/dotfiles/.bash_aliases"         "$USER_HOME/.bash_aliases"
+ln -sf "$USER_HOME/dotfiles/.gitconfig"            "$USER_HOME/.gitconfig"
+ln -sf "$USER_HOME/dotfiles/.vimrc"                "$USER_HOME/.vimrc"
+ln -sf "$USER_HOME/dotfiles/.tmux.conf"            "$USER_HOME/.tmux.conf"
+ln -snf "$USER_HOME/dotfiles/.vim"                 "$USER_HOME/.vim"
+ln -snf "$USER_HOME/dotfiles/.tmux"                "$USER_HOME/.tmux"
+ln -snf "$USER_HOME/dotfiles/.kmonad"              "$USER_HOME/.kmonad"
 mkdir -p "$USER_HOME/.config"
-ln -snf "$USER_HOME/dotfiles/.config/nvim" "$USER_HOME/.config/nvim"
+ln -snf "$USER_HOME/dotfiles/.config/nvim"         "$USER_HOME/.config/nvim"
 mkdir -p "$USER_HOME/.ssh"
-ln -sf "$USER_HOME/dotfiles/.ssh/config"   "$USER_HOME/.ssh/config"
+ln -sf "$USER_HOME/dotfiles/.ssh/config"           "$USER_HOME/.ssh/config"
+mkdir -p "$USER_HOME/ghostty"
+mkdir -p "$USER_HOME/ghostty/themes"
+ln -sf "$USER_HOME/dotfiles/ghostty/themes/ben256" "$USER_HOME/ghostty/themes/ben256"
+ln -snf "$USER_HOME/.config/ghostty"               "$USER_HOME/.config/ghostty"
+ln -sf "$USER_HOME/dotfiles/.dircolors"            "$USER_HOME/.dircolors"
 ok "Linked dotfiles"
 
-# Set up kitty
-mkdir -p "$USER_HOME/.config/kitty"
-cat > "$USER_HOME/.config/kitty/kitty.conf" << 'EOF'
-# Font
-font_family      JetBrains Mono
-font_size        12.0
+# Set up ghostty
+curl -sS https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | sudo gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
 
-# Transparency
-background_opacity 0.85
+echo "deb https://debian.griffo.io/apt $(lsb_release -sc 2>/dev/null) main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list
 
-# Bold text uses bright colors
-bold_is_bright yes
+sudo apt update
 
-# Window
-window_padding_width 8
-hide_window_decorations yes
-confirm_os_window_close 0
-EOF
-ok "Configured kitty"
+PACKAGES=(
+    zig
+    ghostty
+    lazygit
+    yazi
+    eza
+    uv
+    fzf
+    zoxide
+    bun
+    tigerbeetle
+)
+
+install_packages
+ok "Installed ghostty"
 
 # Set up bspwm
 mkdir -p "$USER_HOME/.config/bspwm"
 cp /usr/share/doc/bspwm/examples/bspwmrc "$USER_HOME/.config/bspwm/bspwmrc"
 chmod +x "$USER_HOME/.config/bspwm/bspwmrc"
-sed -i 's/urxvt/kitty/g; s/xterm/kitty/g' "$USER_HOME/.config/bspwm/bspwmrc"
+sed -i 's/urxvt/ghostty/g; s/xterm/ghostty/g' "$USER_HOME/.config/bspwm/bspwmrc"
 ok "Configured bspwm"
 
 # Set up sxhkd
 mkdir -p "$USER_HOME/.config/sxhkd"
 cp /usr/share/doc/bspwm/examples/sxhkdrc "$USER_HOME/.config/sxhkd/sxhkdrc"
-sed -i 's/urxvt/kitty/g; s/xterm/kitty/g' "$USER_HOME/.config/sxhkd/sxhkdrc"
+sed -i 's/urxvt/ghostty/g; s/xterm/ghostty/g' "$USER_HOME/.config/sxhkd/sxhkdrc"
 ok "Configured sxhkd"
 
 # Download wallpaper (gum spinner)
