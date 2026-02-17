@@ -78,6 +78,8 @@ PACKAGES=(
     firefox-esr
     fastfetch
     tree
+    rofi
+    papirus-icon-theme
 )
 
 # Update package lists (gum spinner)
@@ -139,6 +141,7 @@ ln -snf "$USER_HOME/dotfiles/.config/nvim"          "$USER_HOME/.config/nvim"
 mkdir -p "$USER_HOME/.ssh"
 ln -sf "$USER_HOME/dotfiles/.ssh/config"            "$USER_HOME/.ssh/config"
 ln -snf "$USER_HOME/dotfiles/.config/ghostty"       "$USER_HOME/.config/ghostty"
+ln -snf "$USER_HOME/dotfiles/.config/rofi"          "$USER_HOME/.config/rofi"
 ln -sf "$USER_HOME/dotfiles/.dircolors"             "$USER_HOME/.dircolors"
 ln -sf "$USER_HOME/dotfiles/.xinitrc"             "$USER_HOME/.xinitrc"
 ok "Linked dotfiles"
@@ -174,7 +177,7 @@ ok "Configured bspwm"
 # Set up sxhkd
 mkdir -p "$USER_HOME/.config/sxhkd"
 cp /usr/share/doc/bspwm/examples/sxhkdrc "$USER_HOME/.config/sxhkd/sxhkdrc"
-sed -i 's/urxvt/ghostty/g; s/xterm/ghostty/g' "$USER_HOME/.config/sxhkd/sxhkdrc"
+sed -i 's/urxvt/ghostty/g; s/xterm/ghostty/g; s/dmenu_run/rofi -show drun -theme ben256/g' "$USER_HOME/.config/sxhkd/sxhkdrc"
 ok "Configured sxhkd"
 
 # Download wallpaper (gum spinner)
