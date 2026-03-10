@@ -1,5 +1,7 @@
 # Dotfiles
 
+![Ben256 dotfiles install script](https://shthub.org/u/benjamin/ben256_install.png?raw)
+
 ## Install
 
 This `install.sh` is meant to be run on a minimal Debian install.
