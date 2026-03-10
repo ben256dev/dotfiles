@@ -23,6 +23,8 @@ BRIGHT_GREEN='\033[92;1m'
 BRIGHT_RED='\033[0;91;1m'
 BRIGHT_YELLOW='\033[0;93;1m'
 BRIGHT_CYAN='\033[0;96;1m'
+CYAN='\033[0;36;1m'
+BOLD_WHITE='\033[1;97m'
 
 ok() { echo -e "${GREEN}✓${NC} ${1}"; }
 fail() { echo -e "${RED}✗${NC} ${1}"; exit 1; }
@@ -33,16 +35,21 @@ banner() {
     echo -e "${GREEN}"
     echo ""
     echo ""
-    echo -e "${BRIGHT_GREEN} ,,                                                      \e[0m"
-    echo -e "${BRIGHT_GREEN}*MM                                                ${BRIGHT_CYAN}m.6*\" \e[0m"
-    echo -e "${BRIGHT_GREEN} MM                                               ${BRIGHT_CYAN}m,M'    \e[0m"
-    echo -e "${BRIGHT_GREEN} MM,dMMb.   .gP\"Ya \`7MMpMMMb. ${BRIGHT_RED}  pd*\"*b.  ${BRIGHT_YELLOW}M****** ${BRIGHT_CYAN}m,Mbmmm.\e[0m"
-    echo -e "${BRIGHT_GREEN} MM    \`Mb ,M'   Yb  MM    MM  ${BRIGHT_RED}(O)   j8 ${BRIGHT_YELLOW}.M       ${BRIGHT_CYAN}m6M'  \`Mb.\e[0m"
-    echo -e "${BRIGHT_GREEN} MM     M8 8M\"\"\"\"\"\"  MM    MM ${BRIGHT_RED}     ,;j9 ${BRIGHT_YELLOW}|bMMAg.  ${BRIGHT_CYAN}mMI     M8\e[0m"
-    echo -e "${BRIGHT_GREEN} MM.   ,M9 YM.    ,  MM    MM   ${BRIGHT_RED},-='         ${BRIGHT_YELLOW}\`Mb ${BRIGHT_CYAN}mWM.   ,M9\e[0m"
-    echo -e "${BRIGHT_GREEN} P^YbmdP'   \`Mbmmd'.JMML  JMML.${BRIGHT_RED}Ammmmmmm       ${BRIGHT_YELLOW}jM  ${BRIGHT_CYAN}mWMbmmd9 \e[0m"
-    echo -e "${BRIGHT_GREEN}                                        ${BRIGHT_YELLOW}(O)  ,M9         \e[0m"
-    echo -e "${BRIGHT_GREEN}                                         ${BRIGHT_YELLOW}6mmm9           \e[0m"
+    echo -e "           ${BRIGHT_RED}        V█n        "
+    echo -e "           ${BRIGHT_RED}      V█████N      "
+    echo -e "           ${BRIGHT_RED}    V█████████N    "
+    echo -e "           ${BRIGHT_RED}  V█████████████N       ${BOLD_WHITE} ,,                                                      \e[0m"
+    echo -e "           ${BRIGHT_RED}c█████████████████n     ${BOLD_WHITE}*MM                                                ${CYAN}m.6*\" \e[0m"
+    echo -e " ${BRIGHT_YELLOW}█████████${BRIGHT_RED}n█████████████████c      ${BOLD_WHITE} MM                                               ${CYAN}m,M'    \e[0m"
+    echo -e " ${BRIGHT_YELLOW}█████████${BRIGHT_RED}  N█████████████V        ${BOLD_WHITE} MM,dMMb.   .gP\"Ya \`7MMpMMMb. ${BRIGHT_RED}  pd*\"*b.  ${BRIGHT_YELLOW}M****** ${CYAN}m,Mbmmm.\e[0m"
+    echo -e " ${BRIGHT_YELLOW}█████████${BRIGHT_RED}    N█████████V          ${BOLD_WHITE} MM    \`Mb ,M'   Yb  MM    MM  ${BRIGHT_RED}(O)   j8 ${BRIGHT_YELLOW}.M       ${CYAN}m6M'  \`Mb.\e[0m"
+    echo -e " ${BRIGHT_YELLOW}█████████${BRIGHT_RED}      N█████V            ${BOLD_WHITE} MM     M8 8M\"\"\"\"\"\"  MM    MM ${BRIGHT_RED}     ,;j9 ${BRIGHT_YELLOW}|bMMAg.  ${CYAN}mMI     M8\e[0m"
+    echo -e " ${BRIGHT_YELLOW}█████████${BRIGHT_RED}        n█V              ${BOLD_WHITE} MM.   ,M9 YM.    ,  MM    MM   ${BRIGHT_RED},-='         ${BRIGHT_YELLOW}\`Mb ${CYAN}mWM.   ,M9\e[0m"
+    echo -e "          ${CYAN}█████████                 ${BOLD_WHITE}P^YbmdP'   \`Mbmmd'.JMML  JMML.${BRIGHT_RED}Ammmmmmm       ${BRIGHT_YELLOW}jM  ${CYAN}mWMbmmd9 \e[0m"
+    echo -e "          ${CYAN}█████████                                                        ${BRIGHT_YELLOW}(O)  ,M9         \e[0m"
+    echo -e "          ${CYAN}█████████                                                         ${BRIGHT_YELLOW}6mmm9           \e[0m"
+    echo -e "          ${CYAN}█████████     "
+    echo -e "          ${CYAN}█████████     "
     echo ""
     echo ""
     echo -e "${NC}"
