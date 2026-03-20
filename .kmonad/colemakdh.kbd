@@ -28,7 +28,7 @@
    mi (tap-hold-next-release 180 i ralt)
    mo (tap-hold-next-release 180 o rmet)
 
-   mx (tap-hold-next-release 180 x C-bspc)
+   mx (tap-hold-next-release 180 x bspc)
 
    toqw (tap-hold-next-release 1000 lmet (layer-switch qwerty))
    tocol (tap-hold-next-release 1000 lmet (layer-switch ben-colemak-dh))
@@ -58,7 +58,7 @@
   _    _  C-bspc _    _    _    _    _   pgup  _    _    _    _    _
   _    _    _    _    _    _   lft  down  up  rght  _    _    _
   _    _    _   pgdn  _    _    _    _    _    _    _    _
-  _    _    _              bspc          @altnum  _
+  _    _    _              C-bspc          @altnum  _
 )
 
 (deflayer ext-layer
