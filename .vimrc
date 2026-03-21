@@ -12,6 +12,10 @@ augroup onedark_overrides
   autocmd!
   autocmd ColorScheme onedark highlight Normal ctermbg=0 guibg=#000000
 augroup END
+augroup markdown_wrap
+  autocmd!
+  autocmd FileType markdown setlocal wrap breakindent
+augroup END
 colorscheme onedark
 
 set relativenumber
@@ -25,7 +29,7 @@ set incsearch
 let mapleader = " "
 
 " Normal Mode Snippets
-autocmd FileType html,markdown,md,txt setlocal nowrap
+autocmd FileType html,txt setlocal nowrap
 nnoremap ,c :-1read $HOME/.vim/.skeleton.c<CR>4j$
 nnoremap ,sh :-1read $HOME/.vim/.skeleton.sh<CR>:w<CR>:e<CR>2j
 nnoremap ,html :-1read $HOME/.vim/.skeleton.html<CR>4jf>l

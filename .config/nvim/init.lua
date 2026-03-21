@@ -224,8 +224,16 @@ vim.keymap.set('n', '<leader>tt', toggle_transparent_bg)
 
 -- Autocommands
 vim.api.nvim_create_autocmd('FileType', {
-  pattern = { 'html', 'markdown', 'text' },
+  pattern = { 'html', 'text' },
   callback = function()
     vim.opt_local.wrap = false
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'markdown' },
+  callback = function()
+    vim.opt_local.wrap = true
+    vim.opt_local.breakindent = true
   end,
 })
