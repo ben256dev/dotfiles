@@ -266,6 +266,7 @@ PACKAGES=(
     uv
     fzf
     diff-so-fancy
+    aha
     zoxide
     bun
     tigerbeetle

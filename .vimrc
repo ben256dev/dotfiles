@@ -16,6 +16,12 @@ augroup markdown_wrap
   autocmd!
   autocmd FileType markdown setlocal wrap breakindent
 augroup END
+
+augroup go_fmt_indent
+  autocmd!
+  autocmd FileType go setlocal noexpandtab tabstop=4 shiftwidth=4 softtabstop=4
+augroup END
+
 colorscheme onedark
 
 set relativenumber

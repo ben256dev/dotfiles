@@ -5,6 +5,8 @@ query="${*:-}"
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/v"
 last_file_path="$state_dir/last_file"
 history_file_path="$state_dir/history"
+diff_cache_dir="$state_dir/diffs"
+diff_index_path="$diff_cache_dir/index.tsv"
 
 abs_path() {
   local p="$1"
@@ -24,9 +26,66 @@ record_open() {
   mv "${history_file_path}.tmp" "$history_file_path"
 }
 
+cache_diff() {
+  local file="$1"
+  local diff_tmp="$2"
+  local ts id safe ansi_path html_path full_file
+
+  mkdir -p "$diff_cache_dir"
+  ts="$(date +%Y-%m-%dT%H:%M:%S%z)"
+  id="$(date +%Y%m%d-%H%M%S)-$$-$RANDOM"
+  safe="$(basename "$file" | tr -cs 'A-Za-z0-9._-' '_')"
+  ansi_path="$diff_cache_dir/${id}-${safe}.ansi"
+  html_path="$diff_cache_dir/${id}-${safe}.html"
+  full_file="$(abs_path "$file")"
+
+  cp -- "$diff_tmp" "$ansi_path"
+
+  if command -v aha >/dev/null 2>&1; then
+    aha --black < "$ansi_path" > "$html_path" 2>/dev/null || true
+  fi
+
+  printf '%s\t%s\t%s\t%s\n' "$ts" "$full_file" "$ansi_path" "$html_path" >> "$diff_index_path"
+}
+
+output_cached_diffs() {
+  local mode="${1:-ansi}"
+
+  [ -f "$diff_index_path" ] || exit 0
+
+  if [ "$mode" = "html" ]; then
+    awk -F '\t' 'NF >= 4 && $4 != "" {print $4}' "$diff_index_path" | while IFS= read -r html; do
+      [ -f "$html" ] || continue
+      cat "$html"
+      printf '\n'
+    done
+    exit 0
+  fi
+
+  awk -F '\t' 'NF >= 3 && $3 != "" {print $3}' "$diff_index_path" | while IFS= read -r ansi; do
+    [ -f "$ansi" ] || continue
+    cat "$ansi"
+    printf '\n'
+  done
+  exit 0
+}
+
+render_diff() {
+  local old_file="$1"
+  local new_file="$2"
+
+  if command -v diff-so-fancy >/dev/null 2>&1; then
+    git diff --no-index --color=always -U5 "$old_file" "$new_file" \
+      | diff-so-fancy \
+      | sed '1,3d; s|after/||g; s|before/||g' || true
+  else
+    git diff --no-index --color=always -U5 "$old_file" "$new_file" || true
+  fi
+}
+
 open_file() {
   local file="$1"
-  local tmpdir before after
+  local tmpdir before after diff_tmp
 
   tmpdir="$(mktemp -d)"
 
@@ -41,16 +100,24 @@ open_file() {
   [ -f "$file" ] && cp -- "$file" "$after"
 
   if [ -f "$before" ] && [ -f "$after" ] && ! cmp -s "$before" "$after"; then
+    diff_tmp="$(mktemp)"
     (
       cd "$tmpdir" || exit
-      git diff --no-index --color=always -U5 "before/$file" "after/$file" \
-        | diff-so-fancy \
-        | sed '1,3d; s|after/||g; s|before/||g'
+      render_diff "before/$file" "after/$file" | tee "$diff_tmp"
     )
+    cache_diff "$file" "$diff_tmp"
+    rm -f -- "$diff_tmp"
   fi
 
   rm -rf -- "$tmpdir"
 }
+
+if [ "${1:-}" = "+" ] || [ "${1:-}" = "diffs" ]; then
+  if [ "${2:-}" = "html" ] || [ "${1:-}" = "html" ]; then
+    output_cached_diffs "html"
+  fi
+  output_cached_diffs "ansi"
+fi
 
 if [ "${1:-}" = "-" ] && [ "$#" -eq 1 ]; then
   if [ ! -f "$last_file_path" ]; then
