@@ -165,3 +165,7 @@ elif [ -f /usr/share/bash-completion/completions/fzf ]; then
 fi
 
 export PATH="$HOME/.clanker:$PATH"
+
+if [ -f "$HOME/.config/shell/v.sh" ]; then
+    . "$HOME/.config/shell/v.sh"
+fi

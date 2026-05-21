@@ -108,6 +108,7 @@ PACKAGES=(
     suckless-tools
     dbus-x11
     fzf
+    fd-find
     bspwm
     sxhkd
     firefox-esr
@@ -175,7 +176,12 @@ ln -sf "$DOTFILES_DIR/.vimrc"                 "$USER_HOME/.vimrc"
 #ln -snf "$DOTFILES_DIR/.tmux"                 "$USER_HOME/.tmux"
 ln -snf "$DOTFILES_DIR/.kmonad"               "$USER_HOME/.kmonad"
 mkdir -p "$USER_HOME/.config"
+mkdir -p "$USER_HOME/.config/shell"
+mkdir -p "$USER_HOME/.local/bin"
 ln -snf "$DOTFILES_DIR/.config/nvim"          "$USER_HOME/.config/nvim"
+ln -sf "$DOTFILES_DIR/.config/shell/v.sh"     "$USER_HOME/.config/shell/v.sh"
+ln -sf "$DOTFILES_DIR/.local/bin/v"           "$USER_HOME/.local/bin/v"
+chmod +x "$DOTFILES_DIR/.local/bin/v"
 mkdir -p "$USER_HOME/.ssh"
 ln -sf "$DOTFILES_DIR/.ssh/config"            "$USER_HOME/.ssh/config"
 ln -snf "$DOTFILES_DIR/.config/ghostty"       "$USER_HOME/.config/ghostty"
@@ -207,6 +213,7 @@ PACKAGES=(
     eza
     uv
     fzf
+    diff-so-fancy
     zoxide
     bun
     tigerbeetle
