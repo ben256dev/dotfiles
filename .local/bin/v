@@ -2,6 +2,49 @@
 set -euo pipefail
 
 query="${*:-}"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/v"
+last_file_path="$state_dir/last_file"
+
+open_file() {
+  local file="$1"
+  local tmpdir before after
+
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf -- "$tmpdir"' EXIT
+
+  mkdir -p "$tmpdir/before/$(dirname "$file")"
+  mkdir -p "$tmpdir/after/$(dirname "$file")"
+
+  before="$tmpdir/before/$file"
+  after="$tmpdir/after/$file"
+
+  [ -f "$file" ] && cp -- "$file" "$before"
+  vim -c 'autocmd VimEnter * normal! g;' "$file"
+  [ -f "$file" ] && cp -- "$file" "$after"
+
+  if [ -f "$before" ] && [ -f "$after" ] && ! cmp -s "$before" "$after"; then
+    (
+      cd "$tmpdir" || exit
+      git diff --no-index --color=always -U5 "before/$file" "after/$file" \
+        | diff-so-fancy \
+        | sed '1,3d; s|after/||g; s|before/||g'
+    )
+  fi
+}
+
+if [ "${1:-}" = "-" ] && [ "$#" -eq 1 ]; then
+  if [ ! -f "$last_file_path" ]; then
+    printf 'v: no previous file recorded\n' >&2
+    exit 1
+  fi
+  f="$(cat "$last_file_path")"
+  if [ -z "$f" ] || [ ! -e "$f" ]; then
+    printf 'v: previous file is missing: %s\n' "$f" >&2
+    exit 1
+  fi
+  open_file "$f"
+  exit 0
+fi
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   files="$(git ls-files --cached --others --exclude-standard)"
@@ -19,24 +62,11 @@ fi
 f="$(printf '%s\n' "$files" | fzf --query="$query" --select-1 --exit-0)" || exit 0
 [ -n "$f" ] || exit 0
 
-tmpdir="$(mktemp -d)"
-trap 'rm -rf -- "$tmpdir"' EXIT
-
-mkdir -p "$tmpdir/before/$(dirname "$f")"
-mkdir -p "$tmpdir/after/$(dirname "$f")"
-
-before="$tmpdir/before/$f"
-after="$tmpdir/after/$f"
-
-[ -f "$f" ] && cp -- "$f" "$before"
-vim -c 'autocmd VimEnter * normal! g;' "$f"
-[ -f "$f" ] && cp -- "$f" "$after"
-
-if [ -f "$before" ] && [ -f "$after" ] && ! cmp -s "$before" "$after"; then
-  (
-    cd "$tmpdir" || exit
-    git diff --no-index --color=always -U5 "before/$f" "after/$f" \
-      | diff-so-fancy \
-      | sed '1,3d; s|after/||g; s|before/||g'
-  )
+mkdir -p "$state_dir"
+if command -v realpath >/dev/null 2>&1; then
+  realpath -- "$f" > "$last_file_path"
+else
+  printf '%s\n' "$PWD/$f" > "$last_file_path"
 fi
+
+open_file "$f"

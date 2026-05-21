@@ -27,9 +27,11 @@ CYAN='\033[0;36;1m'
 BOLD_WHITE='\033[1;97m'
 
 ok() { echo -e "${GREEN}✓${NC} ${1}"; }
+warn() { echo -e "${BRIGHT_YELLOW}!${NC} ${1}"; }
 fail() { echo -e "${RED}✗${NC} ${1}"; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"; }
 apt_quiet_install() { sudo DEBIAN_FRONTEND=noninteractive apt install --yes -qq "$@"; }
+pkg_exists() { apt-cache show "$1" >/dev/null 2>&1; }
 
 banner() {
     echo -e "${GREEN}"
@@ -111,12 +113,37 @@ PACKAGES=(
     fd-find
     bspwm
     sxhkd
-    firefox-esr
+    __FIREFOX_PKG__
     fastfetch
     tree
     rofi
     papirus-icon-theme
 )
+
+if pkg_exists firefox-esr; then
+    FIREFOX_PKG="firefox-esr"
+elif pkg_exists firefox; then
+    FIREFOX_PKG="firefox"
+else
+    FIREFOX_PKG=""
+fi
+
+if [ -n "$FIREFOX_PKG" ]; then
+    for i in "${!PACKAGES[@]}"; do
+        if [ "${PACKAGES[$i]}" = "__FIREFOX_PKG__" ]; then
+            PACKAGES[$i]="$FIREFOX_PKG"
+            break
+        fi
+    done
+else
+    filtered=()
+    for pkg in "${PACKAGES[@]}"; do
+        [ "$pkg" = "__FIREFOX_PKG__" ] && continue
+        filtered+=("$pkg")
+    done
+    PACKAGES=("${filtered[@]}")
+    warn "Neither firefox-esr nor firefox is available in apt; skipping browser install"
+fi
 
 # Update package lists (gum spinner)
 gum spin --spinner line --title "Updating package lists" -- sudo apt update -qq
@@ -124,16 +151,31 @@ ok "Updated package lists"
 
 install_packages() {
     local pkgs=("$@")
+    local resolved=()
     local to_install=()
+
     for pkg in "${pkgs[@]}"; do
+        if pkg_exists "$pkg"; then
+            resolved+=("$pkg")
+        else
+            warn "Skipping unavailable package: $pkg"
+        fi
+    done
+
+    if [ "${#resolved[@]}" -eq 0 ]; then
+        warn "No installable packages in this group"
+        return
+    fi
+
+    for pkg in "${resolved[@]}"; do
         if ! dpkg -s "$pkg" &>/dev/null; then
             to_install+=("$pkg")
         fi
     done
-    local skipped=$(( ${#pkgs[@]} - ${#to_install[@]} ))
+    local skipped=$(( ${#resolved[@]} - ${#to_install[@]} ))
     local total=${#to_install[@]}
     if [ "$total" -eq 0 ]; then
-        ok "All ${#pkgs[@]} packages already installed"
+        ok "All ${#resolved[@]} packages already installed"
     else
         local current=0
         for pkg in "${to_install[@]}"; do
@@ -145,7 +187,17 @@ install_packages() {
             pad=$(printf '░%.0s' $(seq 1 $empty 2>/dev/null))
             if ! gum spin --spinner line --title "Installing packages [${current}/${total}] ${bar}${pad} ${pkg}" -- \
                 sudo DEBIAN_FRONTEND=noninteractive apt install --yes -qq "$pkg"; then
-                fail "Failed to install ${pkg}"
+                if [ "$pkg" = "firefox-esr" ] && pkg_exists firefox; then
+                    warn "Failed to install firefox-esr; trying firefox"
+                    if ! gum spin --spinner line --title "Installing fallback package firefox" -- \
+                        sudo DEBIAN_FRONTEND=noninteractive apt install --yes -qq firefox; then
+                        warn "Failed to install firefox fallback; continuing"
+                    else
+                        ok "Installed firefox fallback"
+                    fi
+                else
+                    warn "Failed to install ${pkg}; continuing"
+                fi
             fi
         done
         ok "Installed ${total} packages (${skipped} already installed)"
