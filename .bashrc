@@ -2,6 +2,12 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
+# User-installed Python console scripts, including mkdocs.
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
 # If not running interactively, don't do anything
 case $- in
     *i*) ;;
@@ -116,8 +122,6 @@ if ! shopt -oq posix; then
   fi
 fi
 
-# Created by `pipx` on 2024-06-15 15:22:16
-export PATH="$PATH:$HOME/.local/bin"
 export PATH="$HOME/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 

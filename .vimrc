@@ -36,11 +36,11 @@ let mapleader = " "
 
 " Normal Mode Snippets
 autocmd FileType html,txt setlocal nowrap
-nnoremap ,c :-1read $HOME/.vim/.skeleton.c<CR>4j$
-nnoremap ,sh :-1read $HOME/.vim/.skeleton.sh<CR>:w<CR>:e<CR>2j
-nnoremap ,html :-1read $HOME/.vim/.skeleton.html<CR>4jf>l
-nnoremap ,mainc :-1read $HOME/.vim/.skeleton.mainc<CR>
-nnoremap ,go :-1read $HOME/.vim/.skeleton.go<CR>4j$
+nnoremap ,c :-1read $HOME/.config/nvim/skeletons/skeleton.c<CR>4j$
+nnoremap ,sh :-1read $HOME/.config/nvim/skeletons/skeleton.sh<CR>:w<CR>:e<CR>2j
+nnoremap ,html :-1read $HOME/.config/nvim/skeletons/skeleton.html<CR>4jf>l
+nnoremap ,mainc :-1read $HOME/.config/nvim/skeletons/skeleton.mainc<CR>
+nnoremap ,go :-1read $HOME/.config/nvim/skeletons/skeleton.go<CR>4j$
 
 " Braces and tags helpers
 inoremap ,fi {<CR>}<Esc>O

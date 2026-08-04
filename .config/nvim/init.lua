@@ -69,13 +69,12 @@ require('lazy').setup({
       'saadparwaiz1/cmp_luasnip',
     },
     config = function()
-      local lspconfig = require('lspconfig')
       local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
-      lspconfig.clangd.setup({ capabilities = capabilities })
-      lspconfig.pyright.setup({ capabilities = capabilities })
-      lspconfig.gopls.setup({ capabilities = capabilities })
-      lspconfig.ts_ls.setup({ capabilities = capabilities })
+      for _, server in ipairs({ 'clangd', 'pyright', 'gopls', 'ts_ls', 'gdscript' }) do
+        vim.lsp.config(server, { capabilities = capabilities })
+        vim.lsp.enable(server)
+      end
 
       local cmp = require('cmp')
       local luasnip = require('luasnip')
@@ -90,7 +89,6 @@ require('lazy').setup({
           ['<C-f>'] = cmp.mapping.scroll_docs(4),
           ['<C-Space>'] = cmp.mapping.complete(),
           ['<C-e>'] = cmp.mapping.abort(),
-          ['<CR>'] = cmp.mapping.confirm({ select = true }),
           ['<Tab>'] = cmp.mapping(function(fallback)
             if cmp.visible() then
               cmp.select_next_item()
@@ -169,6 +167,14 @@ require('lazy').setup({
   { 'github/copilot.vim' },
 })
 
+-- nvim-lspconfig defers to Neovim's built-in :lsp command on 0.12+, which
+-- means its usual :LspInfo alias is not created.
+if vim.fn.exists(':LspInfo') == 0 then
+  vim.api.nvim_create_user_command('LspInfo', 'checkhealth vim.lsp', {
+    desc = 'Show LSP configuration and client status',
+  })
+end
+
 -- Keybindings: Skeletons
 local skeletons = vim.fn.stdpath('config') .. '/skeletons'
 vim.keymap.set('n', ',c',     ':-1read ' .. skeletons .. '/skeleton.c<CR>4j$')
@@ -235,5 +241,14 @@ vim.api.nvim_create_autocmd('FileType', {
   callback = function()
     vim.opt_local.wrap = true
     vim.opt_local.breakindent = true
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'gdscript',
+  callback = function()
+    vim.opt_local.expandtab = false
+    vim.opt_local.tabstop = 4
+    vim.opt_local.shiftwidth = 4
   end,
 })
