@@ -274,6 +274,13 @@ PACKAGES=(
 
 install_packages "${PACKAGES[@]}"
 
+if command -v gdformat >/dev/null 2>&1; then
+    ok "gdtoolkit is already installed"
+else
+    gum spin --spinner line --title "Installing gdtoolkit" -- uv tool install gdtoolkit
+    ok "Installed gdtoolkit"
+fi
+
 # Link bspwm, sxhkd, picom configs
 ln -snf "$DOTFILES_DIR/.config/bspwm"          "$USER_HOME/.config/bspwm"
 chmod +x "$DOTFILES_DIR/.config/bspwm/bspwmrc"

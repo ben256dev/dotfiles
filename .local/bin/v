@@ -96,7 +96,7 @@ open_file() {
   after="$tmpdir/after/$file"
 
   [ -f "$file" ] && cp -- "$file" "$before"
-  vim -c 'autocmd VimEnter * normal! g;' "$file"
+  nvim -c 'autocmd VimEnter * normal! g;' "$file"
   [ -f "$file" ] && cp -- "$file" "$after"
 
   if [ -f "$before" ] && [ -f "$after" ] && ! cmp -s "$before" "$after"; then
