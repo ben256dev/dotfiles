@@ -15,6 +15,8 @@
 
 (defalias
    altnum (layer-toggle num-layer)
+   raltcol (around (layer-toggle num-layer) (layer-toggle switch-to-qwerty))
+   raltqw (around ralt (layer-toggle switch-to-colemak))
    navkey (layer-toggle nav-layer)
    defkey (layer-switch ben-colemak-dh)
 
@@ -30,8 +32,8 @@
 
    mx (tap-hold-next-release 180 x bspc)
 
-   toqw (tap-hold-next-release 1000 lmet (layer-switch qwerty))
-   tocol (tap-hold-next-release 1000 lmet (layer-switch ben-colemak-dh))
+   toqw (layer-switch qwerty)
+   tocol (layer-switch ben-colemak-dh)
 )
 
 (deflayer ben-colemak-dh
@@ -40,7 +42,7 @@
   _    q    w    f    p    b    j    l    u    y    '   bspc  ]    \
   esc @ma  @mr  @ms  @mt   g    m   @mn  @me  @mi  @mo   ;    ret
 @navkey @mx  c    d    v    z    k    h    ,    .    /   @navkey
-@defkey @toqw @altnum    spc        @altnum  @defkey
+@defkey lmet  @altnum    spc        @raltcol @defkey
 )
 
 (deflayer num-layer
@@ -70,11 +72,29 @@
 @defkey @defkey @defkey    C-bspc       @altnum  @defkey
 )
 
-(deflayer qwerty
+(deflayer switch-to-qwerty
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    @toqw _              _             _    _
+)
+
+(deflayer switch-to-colemak
   _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _
   _    @tocol _              _             _    _
+)
+
+(deflayer qwerty
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _    _
+  _    _    _    _    _    _    _    _    _    _    _    _
+  _    lmet _                _             @raltqw _
 )
