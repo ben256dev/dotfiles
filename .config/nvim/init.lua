@@ -160,7 +160,6 @@ require('lazy').setup({
   { 'junegunn/fzf', build = ':call fzf#install()' },
   { 'junegunn/fzf.vim' },
   { 'tpope/vim-repeat' },
-  { 'github/copilot.vim' },
 })
 
 -- nvim-lspconfig defers to Neovim's built-in :lsp command on 0.12+, which
