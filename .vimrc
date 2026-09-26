@@ -12,6 +12,16 @@ augroup onedark_overrides
   autocmd!
   autocmd ColorScheme onedark highlight Normal ctermbg=0 guibg=#000000
 augroup END
+augroup markdown_wrap
+  autocmd!
+  autocmd FileType markdown setlocal wrap breakindent
+augroup END
+
+augroup go_fmt_indent
+  autocmd!
+  autocmd FileType go setlocal noexpandtab tabstop=4 shiftwidth=4 softtabstop=4
+augroup END
+
 colorscheme onedark
 
 set relativenumber
@@ -25,12 +35,12 @@ set incsearch
 let mapleader = " "
 
 " Normal Mode Snippets
-autocmd FileType html,markdown,md,txt setlocal nowrap
-nnoremap ,c :-1read $HOME/.vim/.skeleton.c<CR>4j$
-nnoremap ,sh :-1read $HOME/.vim/.skeleton.sh<CR>:w<CR>:e<CR>2j
-nnoremap ,html :-1read $HOME/.vim/.skeleton.html<CR>4jf>l
-nnoremap ,mainc :-1read $HOME/.vim/.skeleton.mainc<CR>
-nnoremap ,go :-1read $HOME/.vim/.skeleton.go<CR>4j$
+autocmd FileType html,txt setlocal nowrap
+nnoremap ,c :-1read $HOME/.config/nvim/skeletons/skeleton.c<CR>4j$
+nnoremap ,sh :-1read $HOME/.config/nvim/skeletons/skeleton.sh<CR>:w<CR>:e<CR>2j
+nnoremap ,html :-1read $HOME/.config/nvim/skeletons/skeleton.html<CR>4jf>l
+nnoremap ,mainc :-1read $HOME/.config/nvim/skeletons/skeleton.mainc<CR>
+nnoremap ,go :-1read $HOME/.config/nvim/skeletons/skeleton.go<CR>4j$
 
 " Braces and tags helpers
 inoremap ,fi {<CR>}<Esc>O
@@ -65,7 +75,6 @@ call plug#begin('~/.vim/plugged')
   Plug 'vim-airline/vim-airline'
   Plug 'vim-airline/vim-airline-themes'
   Plug 'tpope/vim-repeat'
-  Plug 'github/copilot.vim'
   Plug 'rrethy/vim-hexokinase', { 'do': 'make hexokinase' }
 call plug#end()
 

@@ -52,9 +52,9 @@ Vim-style arrows with navigation keys.
 - **`d` position**: Page Down
 - **Space**: Backspace
 
-### QWERTY Layer (hold Win for 1s)
+### QWERTY Layer (Right Alt + Left Win)
 
-Plain QWERTY with no mods or layers. Hold Win for 1 second again to switch back to Colemak-DH.
+Plain QWERTY with no mods or layers. Hold Right Alt and tap Left Win to switch immediately from Colemak-DH to QWERTY. Use the same chord to switch back. Left Win by itself remains a normal Meta key.
 
 ## Systemd Service
 

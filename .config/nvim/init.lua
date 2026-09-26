@@ -69,13 +69,12 @@ require('lazy').setup({
       'saadparwaiz1/cmp_luasnip',
     },
     config = function()
-      local lspconfig = require('lspconfig')
       local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
-      lspconfig.clangd.setup({ capabilities = capabilities })
-      lspconfig.pyright.setup({ capabilities = capabilities })
-      lspconfig.gopls.setup({ capabilities = capabilities })
-      lspconfig.ts_ls.setup({ capabilities = capabilities })
+      for _, server in ipairs({ 'clangd', 'pyright', 'gopls', 'ts_ls', 'gdscript' }) do
+        vim.lsp.config(server, { capabilities = capabilities })
+        vim.lsp.enable(server)
+      end
 
       local cmp = require('cmp')
       local luasnip = require('luasnip')
@@ -90,25 +89,6 @@ require('lazy').setup({
           ['<C-f>'] = cmp.mapping.scroll_docs(4),
           ['<C-Space>'] = cmp.mapping.complete(),
           ['<C-e>'] = cmp.mapping.abort(),
-          ['<CR>'] = cmp.mapping.confirm({ select = true }),
-          ['<Tab>'] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-              cmp.select_next_item()
-            elseif luasnip.expand_or_jumpable() then
-              luasnip.expand_or_jump()
-            else
-              fallback()
-            end
-          end, { 'i', 's' }),
-          ['<S-Tab>'] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-              cmp.select_prev_item()
-            elseif luasnip.jumpable(-1) then
-              luasnip.jump(-1)
-            else
-              fallback()
-            end
-          end, { 'i', 's' }),
         }),
         sources = cmp.config.sources({
           { name = 'nvim_lsp' },
@@ -119,6 +99,20 @@ require('lazy').setup({
         }),
       })
     end,
+  },
+
+  -- Formatting
+  {
+    'stevearc/conform.nvim',
+    opts = {
+      formatters_by_ft = {
+        gdscript = { 'gdformat' },
+      },
+      format_after_save = {
+        timeout_ms = 2000,
+        lsp_format = 'never',
+      },
+    },
   },
 
   -- Statusline
@@ -136,7 +130,7 @@ require('lazy').setup({
           lualine_a = { 'mode' },
           lualine_b = { 'branch', 'diff', 'diagnostics' },
           lualine_c = { 'filename' },
-          lualine_x = {},
+          lualine_x = { function() return 'Type Space then ? for help' end },
           lualine_y = {},
           lualine_z = { 'progress', 'location' },
         },
@@ -166,8 +160,15 @@ require('lazy').setup({
   { 'junegunn/fzf', build = ':call fzf#install()' },
   { 'junegunn/fzf.vim' },
   { 'tpope/vim-repeat' },
-  { 'github/copilot.vim' },
 })
+
+-- nvim-lspconfig defers to Neovim's built-in :lsp command on 0.12+, which
+-- means its usual :LspInfo alias is not created.
+if vim.fn.exists(':LspInfo') == 0 then
+  vim.api.nvim_create_user_command('LspInfo', 'checkhealth vim.lsp', {
+    desc = 'Show LSP configuration and client status',
+  })
+end
 
 -- Keybindings: Skeletons
 local skeletons = vim.fn.stdpath('config') .. '/skeletons'
@@ -197,6 +198,13 @@ vim.keymap.set('n', '<C-Down>',  '<C-w>j')
 vim.keymap.set('n', '<C-Up>',    '<C-w>k')
 vim.keymap.set('n', '<C-Right>', '<C-w>l')
 
+-- Keybindings: Cheatsheet
+vim.keymap.set('n', '<leader>?', function()
+  local cheatsheet = vim.fn.stdpath('config') .. '/CHEATSHEET.md'
+  vim.cmd('split ' .. vim.fn.fnameescape(cheatsheet))
+  vim.bo.bufhidden = 'wipe'
+end, { desc = 'Open Neovim cheatsheet' })
+
 -- Keybindings: EasyAlign
 vim.keymap.set('x', 'ga', '<Plug>(EasyAlign)')
 vim.keymap.set('n', 'ga', '<Plug>(EasyAlign)')
@@ -224,8 +232,26 @@ vim.keymap.set('n', '<leader>tt', toggle_transparent_bg)
 
 -- Autocommands
 vim.api.nvim_create_autocmd('FileType', {
-  pattern = { 'html', 'markdown', 'text' },
+  pattern = { 'html', 'text' },
   callback = function()
     vim.opt_local.wrap = false
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'markdown' },
+  callback = function()
+    vim.opt_local.wrap = true
+    vim.opt_local.breakindent = true
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'gdscript',
+  callback = function()
+    vim.opt_local.expandtab = false
+    vim.opt_local.tabstop = 4
+    vim.opt_local.shiftwidth = 4
+    vim.opt_local.softtabstop = 4
   end,
 })
