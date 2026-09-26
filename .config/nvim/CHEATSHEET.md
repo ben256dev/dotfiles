@@ -9,13 +9,17 @@ Select text with `v` first.
 - `"+y` — copy the selection to the system clipboard
 - `:w !bash` — run the selected lines as an external Bash command
 
-## Completion
+## LSP
 
 - `Ctrl-n` / `Ctrl-p` — select next / previous suggestion
 - `Ctrl-y` — accept the selected suggestion
 - `Ctrl-Space` — open suggestions
 - `Ctrl-e` — close suggestions
 - `Ctrl-b` / `Ctrl-f` — scroll suggestion documentation
+
+- `Ctrl-w d` — show the warning or error under the cursor
+- `]d` — jump to the next one
+- `[d` — jump to the previous
 
 ## Finding files and buffers
 
@@ -41,5 +45,6 @@ Select text with `v` first.
 ## Miscellaneous
 
 - `Space t t` — toggle transparent background
+- `Space l l` — toggle light / dark color scheme
 - `Space ?` — open this cheatsheet
 - `:q` — close the cheatsheet and remove its buffer

@@ -211,24 +211,41 @@ vim.keymap.set('n', 'ga', '<Plug>(EasyAlign)')
 
 -- Transparent background toggle
 vim.g.transparent_bg = false
+vim.g.light_mode = false
+
+local dark_background_highlights = {
+  Normal = { bg = '#000000' },
+  NonText = { bg = '#000000' },
+  EndOfBuffer = { bg = '#000000' },
+  SignColumn = { bg = '#000000' },
+}
+
+local function apply_color_mode()
+  local onedark = require('onedark')
+  local style = vim.g.light_mode and 'light' or 'dark'
+
+  onedark.set_options('style', style)
+  onedark.set_options('transparent', vim.g.transparent_bg)
+  onedark.set_options(
+    'highlights',
+    not vim.g.light_mode and not vim.g.transparent_bg and dark_background_highlights or {}
+  )
+  vim.opt.background = vim.g.light_mode and 'light' or 'dark'
+  onedark.load()
+end
 
 local function toggle_transparent_bg()
-  if vim.g.transparent_bg then
-    require('onedark').load()
-    vim.api.nvim_set_hl(0, 'Normal',      { bg = '#000000' })
-    vim.api.nvim_set_hl(0, 'NonText',     { bg = '#000000' })
-    vim.api.nvim_set_hl(0, 'EndOfBuffer', { bg = '#000000' })
-    vim.api.nvim_set_hl(0, 'SignColumn',  { bg = '#000000' })
-  else
-    vim.api.nvim_set_hl(0, 'Normal',      { bg = 'NONE' })
-    vim.api.nvim_set_hl(0, 'NonText',     { bg = 'NONE' })
-    vim.api.nvim_set_hl(0, 'EndOfBuffer', { bg = 'NONE' })
-    vim.api.nvim_set_hl(0, 'SignColumn',  { bg = 'NONE' })
-  end
   vim.g.transparent_bg = not vim.g.transparent_bg
+  apply_color_mode()
+end
+
+local function toggle_light_mode()
+  vim.g.light_mode = not vim.g.light_mode
+  apply_color_mode()
 end
 
 vim.keymap.set('n', '<leader>tt', toggle_transparent_bg)
+vim.keymap.set('n', '<leader>ll', toggle_light_mode)
 
 -- Autocommands
 vim.api.nvim_create_autocmd('FileType', {
