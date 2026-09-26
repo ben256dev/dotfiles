@@ -130,7 +130,7 @@ require('lazy').setup({
           lualine_a = { 'mode' },
           lualine_b = { 'branch', 'diff', 'diagnostics' },
           lualine_c = { 'filename' },
-          lualine_x = {},
+          lualine_x = { function() return 'Type Space then ? for help' end },
           lualine_y = {},
           lualine_z = { 'progress', 'location' },
         },
@@ -197,6 +197,13 @@ vim.keymap.set('n', '<C-Left>',  '<C-w>h')
 vim.keymap.set('n', '<C-Down>',  '<C-w>j')
 vim.keymap.set('n', '<C-Up>',    '<C-w>k')
 vim.keymap.set('n', '<C-Right>', '<C-w>l')
+
+-- Keybindings: Cheatsheet
+vim.keymap.set('n', '<leader>?', function()
+  local cheatsheet = vim.fn.stdpath('config') .. '/CHEATSHEET.md'
+  vim.cmd('split ' .. vim.fn.fnameescape(cheatsheet))
+  vim.bo.bufhidden = 'wipe'
+end, { desc = 'Open Neovim cheatsheet' })
 
 -- Keybindings: EasyAlign
 vim.keymap.set('x', 'ga', '<Plug>(EasyAlign)')
