@@ -198,6 +198,21 @@ vim.keymap.set('n', '<C-Down>',  '<C-w>j')
 vim.keymap.set('n', '<C-Up>',    '<C-w>k')
 vim.keymap.set('n', '<C-Right>', '<C-w>l')
 
+-- Keybindings: Browser-style buffer navigation
+vim.keymap.set({ 'n', 'i', 'x' }, '<C-Tab>', '<Cmd>bnext<CR>', {
+  desc = 'Move to the next buffer',
+})
+vim.keymap.set({ 'n', 'i', 'x' }, '<C-S-Tab>', '<Cmd>bprevious<CR>', {
+  desc = 'Move to the previous buffer',
+})
+-- Legacy terminals may report Ctrl-Tab as Tab and Ctrl-Shift-Tab as Shift-Tab.
+vim.keymap.set('n', '<Tab>', '<Cmd>bnext<CR>', {
+  desc = 'Move to the next buffer',
+})
+vim.keymap.set('n', '<S-Tab>', '<Cmd>bprevious<CR>', {
+  desc = 'Move to the previous buffer',
+})
+
 -- Keybindings: Cheatsheet
 vim.keymap.set('n', '<leader>?', function()
   local cheatsheet = vim.fn.stdpath('config') .. '/CHEATSHEET.md'

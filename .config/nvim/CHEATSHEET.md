@@ -36,11 +36,11 @@ Select text with `v` first.
 - `Ctrl-Up` — move to the window above
 - `Ctrl-Right` — move to the window on the right
 
-## Tabs
+## Buffers (tabs in the top bar)
 
-- `g t` — move to the next tab
-- `g T` — move to the previous tab
-- `{number} g t` — move to a specific numbered tab
+- `Ctrl-Tab` — move one tab to the right
+- `Ctrl-Shift-Tab` — move one tab to the left
+- `Space b` — choose a tab from the buffer list
 
 ## Miscellaneous
 
