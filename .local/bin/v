@@ -20,10 +20,22 @@ abs_path() {
 record_open() {
   local full="$1"
   mkdir -p "$state_dir"
-  printf '%s\n' "$full" > "$last_file_path"
   touch "$history_file_path"
   awk -v new="$full" 'BEGIN{print new} $0 != new {print $0}' "$history_file_path" > "${history_file_path}.tmp"
   mv "${history_file_path}.tmp" "$history_file_path"
+}
+
+remember_session() {
+  local file full
+  local full_files=()
+
+  for file in "$@"; do
+    full="$(abs_path "$file")"
+    record_open "$full"
+    full_files+=("$full")
+  done
+
+  printf '%s\n' "${full_files[@]}" > "$last_file_path"
 }
 
 cache_diff() {
@@ -83,31 +95,37 @@ render_diff() {
   fi
 }
 
-open_file() {
-  local file="$1"
-  local tmpdir before after diff_tmp
+open_files() {
+  local files=("$@")
+  local file tmpdir before after diff_tmp
 
   tmpdir="$(mktemp -d)"
 
-  mkdir -p "$tmpdir/before/$(dirname "$file")"
-  mkdir -p "$tmpdir/after/$(dirname "$file")"
+  for file in "${files[@]}"; do
+    mkdir -p "$tmpdir/before/$(dirname "$file")"
+    mkdir -p "$tmpdir/after/$(dirname "$file")"
 
-  before="$tmpdir/before/$file"
-  after="$tmpdir/after/$file"
+    before="$tmpdir/before/$file"
+    [ -f "$file" ] && cp -- "$file" "$before"
+  done
 
-  [ -f "$file" ] && cp -- "$file" "$before"
-  nvim -c 'autocmd VimEnter * normal! g;' "$file"
-  [ -f "$file" ] && cp -- "$file" "$after"
+  nvim -c 'autocmd VimEnter * normal! g;' -- "${files[@]}"
 
-  if [ -f "$before" ] && [ -f "$after" ] && ! cmp -s "$before" "$after"; then
-    diff_tmp="$(mktemp)"
-    (
-      cd "$tmpdir" || exit
-      render_diff "before/$file" "after/$file" | tee "$diff_tmp"
-    )
-    cache_diff "$file" "$diff_tmp"
-    rm -f -- "$diff_tmp"
-  fi
+  for file in "${files[@]}"; do
+    before="$tmpdir/before/$file"
+    after="$tmpdir/after/$file"
+    [ -f "$file" ] && cp -- "$file" "$after"
+
+    if [ -f "$before" ] && [ -f "$after" ] && ! cmp -s "$before" "$after"; then
+      diff_tmp="$(mktemp)"
+      (
+        cd "$tmpdir" || exit
+        render_diff "before/$file" "after/$file" | tee "$diff_tmp"
+      )
+      cache_diff "$file" "$diff_tmp"
+      rm -f -- "$diff_tmp"
+    fi
+  done
 
   rm -rf -- "$tmpdir"
 }
@@ -146,8 +164,8 @@ create_file() {
     touch -- "$file"
   fi
 
-  record_open "$(abs_path "$file")"
-  open_file "$file"
+  remember_session "$file"
+  open_files "$file"
 }
 
 if [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; then
@@ -171,13 +189,19 @@ if [ "${1:-}" = "-" ] && [ "$#" -eq 1 ]; then
     printf 'v: no previous file recorded\n' >&2
     exit 1
   fi
-  f="$(cat "$last_file_path")"
-  if [ -z "$f" ] || [ ! -e "$f" ]; then
-    printf 'v: previous file is missing: %s\n' "$f" >&2
+  mapfile -t previous_files < <(awk 'NF' "$last_file_path")
+  if [ "${#previous_files[@]}" -eq 0 ]; then
+    printf 'v: no previous file recorded\n' >&2
     exit 1
   fi
-  record_open "$(abs_path "$f")"
-  open_file "$f"
+  for f in "${previous_files[@]}"; do
+    if [ ! -e "$f" ]; then
+      printf 'v: previous file is missing: %s\n' "$f" >&2
+      exit 1
+    fi
+  done
+  remember_session "${previous_files[@]}"
+  open_files "${previous_files[@]}"
   exit 0
 fi
 
@@ -192,9 +216,25 @@ if [ "${1:-}" = "~" ] || [ "${1:-}" = "$HOME" ]; then
       | fzf --query="$history_query" --select-1 --exit-0
   )" || exit 0
   [ -n "$f" ] || exit 0
-  record_open "$(abs_path "$f")"
-  open_file "$f"
+  remember_session "$f"
+  open_files "$f"
   exit 0
+fi
+
+if [ "$#" -gt 0 ]; then
+  all_files=true
+  for f in "$@"; do
+    if [ ! -f "$f" ]; then
+      all_files=false
+      break
+    fi
+  done
+
+  if [ "$all_files" = true ]; then
+    remember_session "$@"
+    open_files "$@"
+    exit 0
+  fi
 fi
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -210,8 +250,51 @@ else
   fi
 fi
 
-if f="$(printf '%s\n' "$files" | fzf --query="$query" --select-1 --exit-0)"; then
-  if [ -z "$f" ]; then
+if [ "$#" -gt 1 ]; then
+  selected_files=()
+
+  for query_part in "$@"; do
+    if [ -f "$query_part" ]; then
+      f="$query_part"
+    else
+      exact_match="$(printf '%s\n' "$files" | awk -F/ -v name="$query_part" '$NF == name')"
+      candidates="$files"
+
+      if [ -n "$exact_match" ]; then
+        candidates="$exact_match"
+      elif [[ "$query_part" == *.* ]]; then
+        extension="${query_part##*.}"
+        extension_matches="$(printf '%s\n' "$files" | awk -v suffix=".$extension" 'substr($0, length($0) - length(suffix) + 1) == suffix')"
+        [ -n "$extension_matches" ] && candidates="$extension_matches"
+      fi
+
+      if f="$(printf '%s\n' "$candidates" | fzf --query="$query_part" --select-1 --exit-0)"; then
+        if [ -z "$f" ]; then
+          printf 'v: no matching file for: %s\n' "$query_part" >&2
+          printf 'v: create it with: v -c %q\n' "$query_part" >&2
+          exit 1
+        fi
+      else
+        fzf_status=$?
+        if [ "$fzf_status" -eq 1 ]; then
+          printf 'v: no matching file for: %s\n' "$query_part" >&2
+          printf 'v: create it with: v -c %q\n' "$query_part" >&2
+          exit 1
+        fi
+        exit 0
+      fi
+    fi
+
+    selected_files+=("$f")
+  done
+
+  remember_session "${selected_files[@]}"
+  open_files "${selected_files[@]}"
+  exit 0
+fi
+
+if selection="$(printf '%s\n' "$files" | fzf --multi --query="$query" --select-1 --exit-0)"; then
+  if [ -z "$selection" ]; then
     if [ -n "$query" ]; then
       printf 'v: no matching file for: %s\n' "$query" >&2
       printf 'v: create it with: v -c %q\n' "$query" >&2
@@ -229,5 +312,6 @@ else
   exit 0
 fi
 
-record_open "$(abs_path "$f")"
-open_file "$f"
+mapfile -t selected_files <<< "$selection"
+remember_session "${selected_files[@]}"
+open_files "${selected_files[@]}"
