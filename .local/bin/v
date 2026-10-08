@@ -17,6 +17,16 @@ abs_path() {
   fi
 }
 
+print_fuzzy_resolution_if_new() {
+  local selected="$1"
+  local selected_full
+
+  selected_full="$(abs_path "$selected")"
+  if [ ! -f "$last_file_path" ] || ! grep -Fqx -- "$selected_full" "$last_file_path"; then
+    printf '%s\n' "$selected"
+  fi
+}
+
 record_open() {
   local full="$1"
   mkdir -p "$state_dir"
@@ -252,6 +262,7 @@ fi
 
 if [ "$#" -gt 1 ]; then
   selected_files=()
+  fuzzy_selected_files=()
 
   for query_part in "$@"; do
     if [ -f "$query_part" ]; then
@@ -283,11 +294,15 @@ if [ "$#" -gt 1 ]; then
         fi
         exit 0
       fi
+      fuzzy_selected_files+=("$f")
     fi
 
     selected_files+=("$f")
   done
 
+  for f in "${fuzzy_selected_files[@]}"; do
+    print_fuzzy_resolution_if_new "$f"
+  done
   remember_session "${selected_files[@]}"
   open_files "${selected_files[@]}"
   exit 0
@@ -313,5 +328,10 @@ else
 fi
 
 mapfile -t selected_files <<< "$selection"
+if [ -n "$query" ]; then
+  for f in "${selected_files[@]}"; do
+    print_fuzzy_resolution_if_new "$f"
+  done
+fi
 remember_session "${selected_files[@]}"
 open_files "${selected_files[@]}"

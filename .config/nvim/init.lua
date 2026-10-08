@@ -71,9 +71,14 @@ require('lazy').setup({
     config = function()
       local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
-      for _, server in ipairs({ 'clangd', 'pyright', 'gopls', 'ts_ls', 'gdscript' }) do
+      for _, server in ipairs({ 'clangd', 'pyright', 'gopls', 'gdscript' }) do
         vim.lsp.config(server, { capabilities = capabilities })
         vim.lsp.enable(server)
+      end
+
+      if vim.fn.executable('typescript-language-server') == 1 then
+        vim.lsp.config('ts_ls', { capabilities = capabilities })
+        vim.lsp.enable('ts_ls')
       end
 
       local cmp = require('cmp')
