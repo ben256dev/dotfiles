@@ -57,6 +57,18 @@ require('lazy').setup({
     end,
   },
 
+  -- C3 syntax highlighting (the upstream runtime lives under vim/).
+  {
+    'c3lang/editor-plugins',
+    lazy = false,
+    config = function(plugin)
+      vim.opt.rtp:append(plugin.dir .. '/vim')
+      vim.filetype.add({
+        extension = { c3 = 'c3', c3i = 'c3', c3t = 'c3' },
+      })
+    end,
+  },
+
   -- LSP + Completion
   {
     'neovim/nvim-lspconfig',
