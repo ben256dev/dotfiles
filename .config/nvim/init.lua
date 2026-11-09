@@ -88,6 +88,16 @@ require('lazy').setup({
         vim.lsp.enable(server)
       end
 
+      if vim.fn.executable('c3-lsp') == 1 then
+        vim.lsp.config('c3', {
+          cmd = { 'c3-lsp' },
+          filetypes = { 'c3', 'c3i', 'c3t' },
+          root_markers = { 'project.json', 'manifest.json', '.git' },
+          capabilities = capabilities,
+        })
+        vim.lsp.enable('c3')
+      end
+
       if vim.fn.executable('typescript-language-server') == 1 then
         vim.lsp.config('ts_ls', { capabilities = capabilities })
         vim.lsp.enable('ts_ls')
