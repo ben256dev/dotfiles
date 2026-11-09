@@ -4,6 +4,8 @@ set -euo pipefail
 query="${*:-}"
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/v"
 last_file_path="$state_dir/last_file"
+missing_file_path="$state_dir/missing_file"
+missing_directory_path="$state_dir/missing_directory"
 history_file_path="$state_dir/history"
 diff_cache_dir="$state_dir/diffs"
 diff_index_path="$diff_cache_dir/index.tsv"
@@ -15,6 +17,18 @@ abs_path() {
   else
     printf '%s\n' "$PWD/$p"
   fi
+}
+
+report_missing_file() {
+  local file="$1"
+  local full="$file"
+
+  [[ "$full" = /* ]] || full="$PWD/$full"
+  mkdir -p "$state_dir"
+  printf '%s' "$full" > "$missing_file_path"
+  pwd -P > "$missing_directory_path"
+  printf 'v: no matching file for: %s\n' "$file" >&2
+  printf 'v: create it with: v -c\n' >&2
 }
 
 print_fuzzy_resolution_if_new() {
@@ -179,11 +193,28 @@ create_file() {
 }
 
 if [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; then
-  if [ "$#" -ne 2 ]; then
-    printf 'usage: v -c FILE\n' >&2
+  if [ "$#" -eq 1 ]; then
+    if [ ! -s "$missing_file_path" ] || [ ! -s "$missing_directory_path" ]; then
+      printf 'usage: v -c [FILE]\n' >&2
+      exit 1
+    fi
+    if [ "$(pwd -P)" != "$(cat -- "$missing_directory_path")" ]; then
+      printf 'v: missing file was requested in another directory; use v -c FILE\n' >&2
+      exit 1
+    fi
+    missing_file="$(cat -- "$missing_file_path")"
+    if [ -e "$missing_file" ] || [ -L "$missing_file" ]; then
+      printf 'usage: v -c [FILE]\n' >&2
+      exit 1
+    fi
+    create_file "$missing_file"
+    rm -f -- "$missing_file_path" "$missing_directory_path"
+  elif [ "$#" -eq 2 ]; then
+    create_file "$2"
+  else
+    printf 'usage: v -c [FILE]\n' >&2
     exit 1
   fi
-  create_file "$2"
   exit 0
 fi
 
@@ -281,15 +312,13 @@ if [ "$#" -gt 1 ]; then
 
       if f="$(printf '%s\n' "$candidates" | fzf --query="$query_part" --select-1 --exit-0)"; then
         if [ -z "$f" ]; then
-          printf 'v: no matching file for: %s\n' "$query_part" >&2
-          printf 'v: create it with: v -c %q\n' "$query_part" >&2
+          report_missing_file "$query_part"
           exit 1
         fi
       else
         fzf_status=$?
         if [ "$fzf_status" -eq 1 ]; then
-          printf 'v: no matching file for: %s\n' "$query_part" >&2
-          printf 'v: create it with: v -c %q\n' "$query_part" >&2
+          report_missing_file "$query_part"
           exit 1
         fi
         exit 0
@@ -311,8 +340,7 @@ fi
 if selection="$(printf '%s\n' "$files" | fzf --multi --query="$query" --select-1 --exit-0)"; then
   if [ -z "$selection" ]; then
     if [ -n "$query" ]; then
-      printf 'v: no matching file for: %s\n' "$query" >&2
-      printf 'v: create it with: v -c %q\n' "$query" >&2
+      report_missing_file "$query"
       exit 1
     fi
     exit 0
@@ -320,8 +348,7 @@ if selection="$(printf '%s\n' "$files" | fzf --multi --query="$query" --select-1
 else
   fzf_status=$?
   if [ "$fzf_status" -eq 1 ] && [ -n "$query" ]; then
-    printf 'v: no matching file for: %s\n' "$query" >&2
-    printf 'v: create it with: v -c %q\n' "$query" >&2
+    report_missing_file "$query"
     exit 1
   fi
   exit 0
