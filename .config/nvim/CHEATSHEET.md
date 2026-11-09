@@ -6,8 +6,9 @@
 
 Select text with `v` first.
 
-- `"+y` — copy the selection to the system clipboard
+- `:+y` — copy the selection to the system clipboard
 - `:w !bash` — run the selected lines as an external Bash command
+- `:!sort` - sort selected lines alphabetically
 
 ## LSP
 

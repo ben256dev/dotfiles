@@ -2,6 +2,7 @@
 set -euo pipefail
 
 query="${*:-}"
+resume_line=""
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/v"
 last_file_path="$state_dir/last_file"
 missing_file_path="$state_dir/missing_file"
@@ -133,7 +134,11 @@ open_files() {
     [ -f "$file" ] && cp -- "$file" "$before"
   done
 
-  nvim -c 'autocmd VimEnter * normal! g;' -- "${files[@]}"
+  if [ -n "$resume_line" ]; then
+    nvim -c "autocmd VimEnter * ++once normal! ${resume_line}Gzz" -- "${files[@]}"
+  else
+    nvim -c 'autocmd VimEnter * ++once normal! g;zz' -- "${files[@]}"
+  fi
 
   for file in "${files[@]}"; do
     before="$tmpdir/before/$file"
@@ -225,7 +230,24 @@ if [ "${1:-}" = "+" ] || [ "${1:-}" = "diffs" ]; then
   output_cached_diffs "ansi"
 fi
 
-if [ "${1:-}" = "-" ] && [ "$#" -eq 1 ]; then
+# Accept both v -42 and v - 42 when resuming at a specific line.
+if [ "$#" -eq 1 ] && [[ "$1" =~ ^-[0-9]+$ ]]; then
+  resume_line="${1#-}"
+elif [ "$#" -eq 2 ] && [ "$1" = "-" ] && [[ "$2" =~ ^[0-9]+$ ]]; then
+  resume_line="$2"
+fi
+
+if [ -n "$resume_line" ]; then
+  while [[ "$resume_line" == 0* ]]; do
+    resume_line="${resume_line#0}"
+  done
+  if [ -z "$resume_line" ]; then
+    printf 'v: line number must be positive\n' >&2
+    exit 1
+  fi
+fi
+
+if [ -n "$resume_line" ] || { [ "$#" -eq 1 ] && [ "${1:-}" = "-" ]; }; then
   if [ ! -f "$last_file_path" ]; then
     printf 'v: no previous file recorded\n' >&2
     exit 1
