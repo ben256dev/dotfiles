@@ -326,11 +326,62 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 
+-- Markdown checkboxes: "- [ ]" <-> "- [x]", on -, * and + bullets and numbered
+-- items at any indent. Only the mark changes, so the cursor stays put.
+local checkbox_patterns = {
+  '^(%s*[%*%+%-]%s+%[)([ xX])%]',
+  '^(%s*%d+[%.%)]%s+%[)([ xX])%]',
+}
+
+local function find_checkbox(line)
+  for _, pattern in ipairs(checkbox_patterns) do
+    local prefix, mark = line:match(pattern)
+    if prefix then
+      return prefix, mark
+    end
+  end
+end
+
+-- Check every checkbox on lines first..last, or uncheck them all if they're
+-- all checked already. Lines without a checkbox are left alone.
+local function toggle_checkboxes(first, last)
+  local boxes, all_checked = {}, true
+  for i, line in ipairs(vim.api.nvim_buf_get_lines(0, first - 1, last, false)) do
+    local prefix, mark = find_checkbox(line)
+    if prefix then
+      table.insert(boxes, { row = first + i - 2, col = #prefix })
+      all_checked = all_checked and mark ~= ' '
+    end
+  end
+  local new_mark = all_checked and ' ' or 'x'
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  for _, box in ipairs(boxes) do
+    vim.api.nvim_buf_set_text(0, box.row, box.col, box.row, box.col + 1, { new_mark })
+  end
+  vim.api.nvim_win_set_cursor(0, cursor)
+end
+
+local function toggle_checkbox_line()
+  local lnum = vim.fn.line('.')
+  toggle_checkboxes(lnum, lnum)
+end
+
+local function toggle_checkbox_selection()
+  local first, last = vim.fn.line('v'), vim.fn.line('.')
+  if first > last then
+    first, last = last, first
+  end
+  toggle_checkboxes(first, last)
+  vim.api.nvim_feedkeys(vim.keycode('<Esc>'), 'nx', false)
+end
+
 vim.api.nvim_create_autocmd('FileType', {
   group = augroup,
   pattern = { 'markdown' },
   callback = function()
     vim.opt_local.wrap = true
     vim.opt_local.breakindent = true
+    vim.keymap.set('n', '<leader>x', toggle_checkbox_line, { buffer = true, desc = 'Toggle Markdown checkbox' })
+    vim.keymap.set('x', '<leader>x', toggle_checkbox_selection, { buffer = true, desc = 'Toggle Markdown checkboxes in selection' })
   end,
 })

@@ -9,10 +9,12 @@ Select text with `V` first.
 - `:y+` / `"+y` — copy the selection to the system clipboard
 - `:w !bash` — run the selected lines as an external Bash command
 - `:!sort` — sort selected lines alphabetically
+- `Space x` — check off every `- [ ]` item in the selection, or uncheck them all if they're all checked already (Markdown files only)
 
 ## Normal mode
 
 - `,c` `,sh` `,py` `,html` `,mainc` `,go` `,c3` — common language skeletons
+- `Space x` — check / uncheck the `- [ ]` item on the current line (Markdown files only)
 
 ## Insert mode
 
