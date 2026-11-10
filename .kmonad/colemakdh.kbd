@@ -30,10 +30,8 @@
    mi (tap-hold-next-release 180 i ralt)
    mo (tap-hold-next-release 180 o rmet)
 
-   mx (tap-hold-next-release 180 x bspc)
 
    toqw (layer-switch qwerty)
-   tocol (layer-switch ben-colemak-dh)
 )
 
 (deflayer ben-colemak-dh
@@ -41,7 +39,7 @@
   grv  !    @    #    $    %    ^    &    *   \(   \)    -    =    @defkey
   _    q    w    f    p    b    j    l    u    y    '   bspc  ]    \
   esc @ma  @mr  @ms  @mt   g    m   @mn  @me  @mi  @mo   ;    ret
-@navkey @mx  c    d    v    z    k    h    ,    .    /   @navkey
+@navkey x    c    d    v    z    k    h    ,    .    /   @navkey
 @defkey lmet  @altnum    spc        @raltcol @defkey
 )
 
@@ -57,19 +55,10 @@
 (deflayer nav-layer
   _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _  C-bspc _    _    _    _    _   pgup  _    _    _    _    _
+  _    _    _    _    _    _    _    _   pgup  _    _    _    _    _
   _    _    _    _    _    _   lft  down  up  rght  _    _    _
   _    _    _   pgdn  _    _    _    _    _    _    _    _
   _    _    _              C-bspc          @altnum  _
-)
-
-(deflayer ext-layer
-  _    _    _    _    _    _    _    _    _    _    _    _    _
-  _    _    _    _    _    _    _    _    _    _    _    _    _    _
-@defkey _   _    _    _    _    _    _    _    _    _    _    _    _
-@defkey _   _    _    _    _    _    _    _    _    _    _    _
-@defkey _   _    _    _    _    _    _    _    _    _   @defkey
-@defkey @defkey @defkey    C-bspc       @altnum  @defkey
 )
 
 (deflayer switch-to-qwerty
@@ -87,7 +76,7 @@
   _    _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _    _
   _    _    _    _    _    _    _    _    _    _    _    _
-  _    @tocol _              _             _    _
+  _    @defkey _              _             _    _
 )
 
 (deflayer qwerty

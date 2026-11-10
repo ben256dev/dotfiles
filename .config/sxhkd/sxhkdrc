@@ -4,7 +4,7 @@ super + Return
 
 # App launcher
 super + @space
-	rofi -show drun -theme ben256
+	rofi -show drun
 
 # Reload sxhkd
 super + Escape
@@ -15,7 +15,7 @@ super + {_,shift + }w
 	bspc node -{c,k}
 
 # Alternate between tiled and monocle layout
-super + m
+super + Tab
 	bspc desktop -l next
 
 # Swap current node with the biggest window
@@ -26,8 +26,9 @@ super + g
 super + {t,shift + t,s,f}
 	bspc node -t {tiled,pseudo_tiled,floating,fullscreen}
 
-# Focus / move window in direction
-super + {_,shift + }{h,j,k,l}
+# Focus / move window in direction: m/n/e/i = left/down/up/right, the same
+# keys as tmux panes and nvim windows
+super + {_,shift + }{m,n,e,i}
 	bspc node -{f,s} {west,south,north,east}
 
 # Focus desktop
@@ -39,17 +40,21 @@ super + shift + {1-9,0}
 	bspc node -d '^{1-9,10}'
 
 # Expand window
-super + alt + {h,j,k,l}
+super + alt + {m,n,e,i}
 	bspc node -z {left -20 0,bottom 0 20,top 0 -20,right 20 0}
 
 # Shrink window
-super + alt + shift + {h,j,k,l}
+super + alt + shift + {m,n,e,i}
 	bspc node -z {right -20 0,top 0 20,bottom 0 -20,left 20 0}
 
 # Preselect direction
-super + ctrl + {h,j,k,l}
+super + ctrl + {m,n,e,i}
 	bspc node -p {west,south,north,east}
 
 # Cancel preselect
 super + ctrl + space
 	bspc node -p cancel
+
+# Quit / restart bspwm (bspwmrc is safe to rerun)
+super + alt + {q,r}
+	bspc {quit,wm -r}

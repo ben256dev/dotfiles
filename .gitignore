@@ -1,4 +1,2 @@
 *.iso
 .claude/
-
-.local/bin/v-diffs

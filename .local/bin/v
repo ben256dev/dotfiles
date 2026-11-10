@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-query="${*:-}"
 resume_line=""
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/v"
 last_file_path="$state_dir/last_file"
@@ -10,23 +9,17 @@ missing_directory_path="$state_dir/missing_directory"
 history_file_path="$state_dir/history"
 diff_cache_dir="$state_dir/diffs"
 diff_index_path="$diff_cache_dir/index.tsv"
+diff_cache_keep=200
 
 abs_path() {
-  local p="$1"
-  if command -v realpath >/dev/null 2>&1; then
-    realpath -- "$p"
-  else
-    printf '%s\n' "$PWD/$p"
-  fi
+  realpath -m -- "$1"
 }
 
 report_missing_file() {
   local file="$1"
-  local full="$file"
 
-  [[ "$full" = /* ]] || full="$PWD/$full"
   mkdir -p "$state_dir"
-  printf '%s' "$full" > "$missing_file_path"
+  abs_path "$file" > "$missing_file_path"
   pwd -P > "$missing_directory_path"
   printf 'v: no matching file for: %s\n' "$file" >&2
   printf 'v: create it with: v -c\n' >&2
@@ -66,15 +59,14 @@ remember_session() {
 cache_diff() {
   local file="$1"
   local diff_tmp="$2"
-  local ts id safe ansi_path html_path full_file
+  local ts id safe ansi_path html_path
 
   mkdir -p "$diff_cache_dir"
   ts="$(date +%Y-%m-%dT%H:%M:%S%z)"
   id="$(date +%Y%m%d-%H%M%S)-$$-$RANDOM"
-  safe="$(basename "$file" | tr -cs 'A-Za-z0-9._-' '_')"
+  safe="$(basename -- "$file" | tr -cs 'A-Za-z0-9._-' '_')"
   ansi_path="$diff_cache_dir/${id}-${safe}.ansi"
   html_path="$diff_cache_dir/${id}-${safe}.html"
-  full_file="$(abs_path "$file")"
 
   cp -- "$diff_tmp" "$ansi_path"
 
@@ -82,81 +74,86 @@ cache_diff() {
     aha --black < "$ansi_path" > "$html_path" 2>/dev/null || true
   fi
 
-  printf '%s\t%s\t%s\t%s\n' "$ts" "$full_file" "$ansi_path" "$html_path" >> "$diff_index_path"
+  printf '%s\t%s\t%s\t%s\n' "$ts" "$(abs_path "$file")" "$ansi_path" "$html_path" >> "$diff_index_path"
+  prune_diff_cache
+}
+
+# Keep only the newest $diff_cache_keep diffs.
+prune_diff_cache() {
+  local total ansi html
+
+  total="$(wc -l < "$diff_index_path")"
+  [ "$total" -gt "$diff_cache_keep" ] || return 0
+
+  head -n "$((total - diff_cache_keep))" "$diff_index_path" \
+    | while IFS=$'\t' read -r _ _ ansi html; do
+        rm -f -- ${ansi:+"$ansi"} ${html:+"$html"}
+      done
+  tail -n "$diff_cache_keep" "$diff_index_path" > "${diff_index_path}.tmp"
+  mv -- "${diff_index_path}.tmp" "$diff_index_path"
 }
 
 output_cached_diffs() {
-  local mode="${1:-ansi}"
+  local column=3 path
 
+  if [ "${1:-}" = "html" ]; then
+    column=4
+  fi
   [ -f "$diff_index_path" ] || exit 0
 
-  if [ "$mode" = "html" ]; then
-    awk -F '\t' 'NF >= 4 && $4 != "" {print $4}' "$diff_index_path" | while IFS= read -r html; do
-      [ -f "$html" ] || continue
-      cat "$html"
-      printf '\n'
-    done
-    exit 0
-  fi
-
-  awk -F '\t' 'NF >= 3 && $3 != "" {print $3}' "$diff_index_path" | while IFS= read -r ansi; do
-    [ -f "$ansi" ] || continue
-    cat "$ansi"
+  awk -F '\t' -v c="$column" '$c != "" {print $c}' "$diff_index_path" | while IFS= read -r path; do
+    [ -f "$path" ] || continue
+    cat -- "$path"
     printf '\n'
   done
   exit 0
 }
 
+# Print a colored diff of a file's contents before and after editing.
 render_diff() {
-  local old_file="$1"
-  local new_file="$2"
+  local label="$1"
+  local before="$2"
+  local after="$3"
+  local diff_cmd=(diff -U5 --color=always --palette='ln=1;38;5;13'
+    --label "$label" --label "$label" -- "$before" "$after")
 
   if command -v diff-so-fancy >/dev/null 2>&1; then
-    git diff --no-index --color=always -U5 "$old_file" "$new_file" \
-      | diff-so-fancy \
-      | sed '1,3d; s|after/||g; s|before/||g' || true
+    # Drop diff-so-fancy's three-line file header; the hunk header names the file.
+    { "${diff_cmd[@]}" || true; } | diff-so-fancy | sed '1,3d' || true
   else
-    git diff --no-index --color=always -U5 "$old_file" "$new_file" || true
+    "${diff_cmd[@]}" || true
   fi
 }
 
 open_files() {
   local files=("$@")
-  local file tmpdir before after diff_tmp
+  local i diff_tmp
 
-  tmpdir="$(mktemp -d)"
+  # Snapshot each file so we can show what changed once nvim exits.
+  # Global (not local) so the EXIT trap can still see it.
+  snapshot_dir="$(mktemp -d)"
+  trap 'rm -rf -- "$snapshot_dir"' EXIT
 
-  for file in "${files[@]}"; do
-    mkdir -p "$tmpdir/before/$(dirname "$file")"
-    mkdir -p "$tmpdir/after/$(dirname "$file")"
-
-    before="$tmpdir/before/$file"
-    [ -f "$file" ] && cp -- "$file" "$before"
-  done
-
-  if [ -n "$resume_line" ]; then
-    nvim -c "autocmd VimEnter * ++once normal! ${resume_line}Gzz" -- "${files[@]}"
-  else
-    nvim -c 'autocmd VimEnter * ++once normal! g;zz' -- "${files[@]}"
-  fi
-
-  for file in "${files[@]}"; do
-    before="$tmpdir/before/$file"
-    after="$tmpdir/after/$file"
-    [ -f "$file" ] && cp -- "$file" "$after"
-
-    if [ -f "$before" ] && [ -f "$after" ] && ! cmp -s "$before" "$after"; then
-      diff_tmp="$(mktemp)"
-      (
-        cd "$tmpdir" || exit
-        render_diff "before/$file" "after/$file" | tee "$diff_tmp"
-      )
-      cache_diff "$file" "$diff_tmp"
-      rm -f -- "$diff_tmp"
+  for i in "${!files[@]}"; do
+    if [ -f "${files[$i]}" ]; then
+      cp -- "${files[$i]}" "$snapshot_dir/$i"
     fi
   done
 
-  rm -rf -- "$tmpdir"
+  if [ -n "$resume_line" ]; then
+    nvim -c "autocmd VimEnter * ++once normal! ${resume_line}Gzz" -- "${files[@]}" || true
+  else
+    # silent!: g; fails with E664 on files that have no change history yet.
+    nvim -c 'autocmd VimEnter * ++once silent! normal! g;zz' -- "${files[@]}" || true
+  fi
+
+  for i in "${!files[@]}"; do
+    if [ -f "$snapshot_dir/$i" ] && [ -f "${files[$i]}" ] && ! cmp -s -- "$snapshot_dir/$i" "${files[$i]}"; then
+      diff_tmp="$snapshot_dir/$i.diff"
+      render_diff "${files[$i]}" "$snapshot_dir/$i" "${files[$i]}" | tee -- "$diff_tmp"
+      cache_diff "${files[$i]}" "$diff_tmp"
+    fi
+  done
 }
 
 create_file() {
@@ -197,6 +194,52 @@ create_file() {
   open_files "$file"
 }
 
+# Fuzzy-pick from $files, preferring exact basename matches, then files with
+# the query's extension. Extra arguments are passed through to fzf.
+fuzzy_pick() {
+  local query="$1"
+  local candidates="$files"
+  local matches
+  shift
+
+  matches="$(printf '%s\n' "$files" | name="$query" awk -F/ '$NF == ENVIRON["name"]')"
+  if [ -z "$matches" ] && [[ "$query" == *.* ]]; then
+    matches="$(printf '%s\n' "$files" | suffix=".${query##*.}" awk '
+      { s = ENVIRON["suffix"] }
+      substr($0, length($0) - length(s) + 1) == s')"
+  fi
+  if [ -n "$matches" ]; then
+    candidates="$matches"
+  fi
+
+  printf '%s\n' "$candidates" | fzf "$@" --query="$query" --select-1 --exit-0
+}
+
+usage() {
+  cat <<'EOF'
+usage: v [FILE | QUERY]...
+
+  v                 fuzzy-pick one or more files (git files, or fd outside git)
+  v QUERY           open QUERY if it is a file, else fuzzy-match it
+                    (exact file names win, then files with the same extension)
+  v A B ...         open several files or queries at once
+  v -               reopen the last session
+  v -N | v - N      reopen the last session at line N
+  v ~ [QUERY]       pick from files you opened before
+  v -c [FILE]       create FILE (or the last unmatched QUERY) and open it
+  v + | v diffs     print the cached diffs of your edits (add "html" for HTML)
+  v -h | v --help   show this help
+
+After nvim exits, v prints a diff of what you changed. The newest 200 diffs
+are kept in ~/.local/state/v/diffs.
+EOF
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+  usage
+  exit 0
+fi
+
 if [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; then
   if [ "$#" -eq 1 ]; then
     if [ ! -s "$missing_file_path" ] || [ ! -s "$missing_directory_path" ]; then
@@ -224,10 +267,7 @@ if [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; then
 fi
 
 if [ "${1:-}" = "+" ] || [ "${1:-}" = "diffs" ]; then
-  if [ "${2:-}" = "html" ] || [ "${1:-}" = "html" ]; then
-    output_cached_diffs "html"
-  fi
-  output_cached_diffs "ansi"
+  output_cached_diffs "${2:-}"
 fi
 
 # Accept both v -42 and v - 42 when resuming at a specific line.
@@ -238,10 +278,8 @@ elif [ "$#" -eq 2 ] && [ "$1" = "-" ] && [[ "$2" =~ ^[0-9]+$ ]]; then
 fi
 
 if [ -n "$resume_line" ]; then
-  while [[ "$resume_line" == 0* ]]; do
-    resume_line="${resume_line#0}"
-  done
-  if [ -z "$resume_line" ]; then
+  resume_line="$((10#$resume_line))"
+  if [ "$resume_line" -eq 0 ]; then
     printf 'v: line number must be positive\n' >&2
     exit 1
   fi
@@ -275,8 +313,11 @@ if [ "${1:-}" = "~" ] || [ "${1:-}" = "$HOME" ]; then
     exit 1
   fi
   f="$(
-    awk 'NF && system("[ -e \"" $0 "\" ]") == 0 {print}' "$history_file_path" \
-      | fzf --query="$history_query" --select-1 --exit-0
+    while IFS= read -r entry; do
+      if [ -n "$entry" ] && [ -e "$entry" ]; then
+        printf '%s\n' "$entry"
+      fi
+    done < "$history_file_path" | fzf --query="$history_query" --select-1 --exit-0
   )" || exit 0
   [ -n "$f" ] || exit 0
   remember_session "$f"
@@ -284,26 +325,20 @@ if [ "${1:-}" = "~" ] || [ "${1:-}" = "$HOME" ]; then
   exit 0
 fi
 
-if [ "$#" -gt 0 ]; then
-  all_files=true
-  for f in "$@"; do
-    if [ ! -f "$f" ]; then
-      all_files=false
-      break
-    fi
-  done
-
-  if [ "$all_files" = true ]; then
-    remember_session "$@"
-    open_files "$@"
-    exit 0
-  fi
+# Everything else: each argument is an existing file or a fuzzy query.
+need_file_list=false
+if [ "$#" -eq 0 ]; then
+  need_file_list=true
 fi
+for arg in "$@"; do
+  [ -f "$arg" ] || need_file_list=true
+done
 
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  files="$(git ls-files --cached --others --exclude-standard)"
-else
-  if command -v fd >/dev/null 2>&1; then
+files=""
+if [ "$need_file_list" = true ]; then
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    files="$(git ls-files --cached --others --exclude-standard)"
+  elif command -v fd >/dev/null 2>&1; then
     files="$(fd --type f)"
   elif command -v fdfind >/dev/null 2>&1; then
     files="$(fdfind --type f)"
@@ -313,74 +348,43 @@ else
   fi
 fi
 
-if [ "$#" -gt 1 ]; then
-  selected_files=()
-  fuzzy_selected_files=()
+selected_files=()
+fuzzy_selected_files=()
 
-  for query_part in "$@"; do
-    if [ -f "$query_part" ]; then
-      f="$query_part"
-    else
-      exact_match="$(printf '%s\n' "$files" | awk -F/ -v name="$query_part" '$NF == name')"
-      candidates="$files"
-
-      if [ -n "$exact_match" ]; then
-        candidates="$exact_match"
-      elif [[ "$query_part" == *.* ]]; then
-        extension="${query_part##*.}"
-        extension_matches="$(printf '%s\n' "$files" | awk -v suffix=".$extension" 'substr($0, length($0) - length(suffix) + 1) == suffix')"
-        [ -n "$extension_matches" ] && candidates="$extension_matches"
-      fi
-
-      if f="$(printf '%s\n' "$candidates" | fzf --query="$query_part" --select-1 --exit-0)"; then
-        if [ -z "$f" ]; then
-          report_missing_file "$query_part"
-          exit 1
-        fi
-      else
-        fzf_status=$?
-        if [ "$fzf_status" -eq 1 ]; then
-          report_missing_file "$query_part"
-          exit 1
-        fi
-        exit 0
-      fi
-      fuzzy_selected_files+=("$f")
-    fi
-
-    selected_files+=("$f")
-  done
-
-  for f in "${fuzzy_selected_files[@]}"; do
-    print_fuzzy_resolution_if_new "$f"
-  done
-  remember_session "${selected_files[@]}"
-  open_files "${selected_files[@]}"
-  exit 0
-fi
-
-if selection="$(printf '%s\n' "$files" | fzf --multi --query="$query" --select-1 --exit-0)"; then
-  if [ -z "$selection" ]; then
-    if [ -n "$query" ]; then
-      report_missing_file "$query"
-      exit 1
-    fi
-    exit 0
-  fi
+if [ "$#" -eq 0 ]; then
+  selection="$(printf '%s\n' "$files" | fzf --multi --select-1 --exit-0)" || exit 0
+  [ -n "$selection" ] || exit 0
+  mapfile -t selected_files <<< "$selection"
 else
-  fzf_status=$?
-  if [ "$fzf_status" -eq 1 ] && [ -n "$query" ]; then
-    report_missing_file "$query"
-    exit 1
+  # A single query may pick several files; with several queries, one each.
+  fzf_opts=()
+  if [ "$#" -eq 1 ]; then
+    fzf_opts=(--multi)
   fi
-  exit 0
-fi
 
-mapfile -t selected_files <<< "$selection"
-if [ -n "$query" ]; then
-  for f in "${selected_files[@]}"; do
-    print_fuzzy_resolution_if_new "$f"
+  for arg in "$@"; do
+    if [ -f "$arg" ]; then
+      selected_files+=("$arg")
+      continue
+    fi
+
+    rc=0
+    selection="$(fuzzy_pick "$arg" "${fzf_opts[@]}")" || rc=$?
+    if [ "$rc" -eq 1 ] || { [ "$rc" -eq 0 ] && [ -z "$selection" ]; }; then
+      report_missing_file "$arg"
+      exit 1
+    elif [ "$rc" -ne 0 ]; then
+      exit 0 # fzf was cancelled
+    fi
+
+    mapfile -t picked <<< "$selection"
+    selected_files+=("${picked[@]}")
+    fuzzy_selected_files+=("${picked[@]}")
   done
 fi
+
+for f in "${fuzzy_selected_files[@]}"; do
+  print_fuzzy_resolution_if_new "$f"
+done
 remember_session "${selected_files[@]}"
 open_files "${selected_files[@]}"

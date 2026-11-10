@@ -5,22 +5,26 @@ vim.opt.number = true
 vim.opt.tabstop = 4
 vim.opt.shiftwidth = 4
 vim.opt.expandtab = true
-vim.opt.hlsearch = true
-vim.opt.incsearch = true
-vim.opt.laststatus = 2
 vim.opt.ttimeoutlen = 0
 vim.opt.showmode = false
 
 vim.g.mapleader = ' '
 vim.g.python_highlight_all = 1
-vim.g.vim_json_syntax_conceal = 0
 vim.g.markdown_fenced_languages = {
   'bash=sh', 'sh', 'python', 'c', 'cpp', 'json', 'html', 'javascript', 'typescript',
 }
 
+-- Pure black instead of onedark's grey (dark mode, non-transparent only).
+local black_background = {
+  Normal = { bg = '#000000' },
+  NonText = { bg = '#000000' },
+  EndOfBuffer = { bg = '#000000' },
+  SignColumn = { bg = '#000000' },
+}
+
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
-if not vim.loop.fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({
     'git', 'clone', '--filter=blob:none',
     'https://github.com/folke/lazy.nvim.git',
@@ -46,12 +50,7 @@ require('lazy').setup({
         code_style = {
           comments = 'italic',
         },
-        highlights = {
-          Normal = { bg = '#000000' },
-          NonText = { bg = '#000000' },
-          EndOfBuffer = { bg = '#000000' },
-          SignColumn = { bg = '#000000' },
-        },
+        highlights = black_background,
       })
       require('onedark').load()
     end,
@@ -81,27 +80,53 @@ require('lazy').setup({
       'saadparwaiz1/cmp_luasnip',
     },
     config = function()
-      local capabilities = require('cmp_nvim_lsp').default_capabilities()
+      -- Every server gets nvim-cmp's completion capabilities.
+      vim.lsp.config('*', { capabilities = require('cmp_nvim_lsp').default_capabilities() })
 
-      for _, server in ipairs({ 'clangd', 'pyright', 'gopls', 'gdscript' }) do
-        vim.lsp.config(server, { capabilities = capabilities })
-        vim.lsp.enable(server)
-      end
+      -- c3-lsp crashes on a file with no project root (a loose .c3 file), so
+      -- only start it inside a C3 project or git repo.
+      vim.lsp.config('c3', {
+        cmd = { 'c3-lsp' },
+        filetypes = { 'c3' },
+        root_dir = function(bufnr, on_dir)
+          local root = vim.fs.root(bufnr, { 'project.json', 'manifest.json', '.git' })
+          if root then
+            on_dir(root)
+          end
+        end,
+      })
 
-      if vim.fn.executable('c3-lsp') == 1 then
-        vim.lsp.config('c3', {
-          cmd = { 'c3-lsp' },
-          filetypes = { 'c3', 'c3i', 'c3t' },
-          root_markers = { 'project.json', 'manifest.json', '.git' },
-          capabilities = capabilities,
-        })
-        vim.lsp.enable('c3')
-      end
+      -- Godot's language server is a TCP port that only exists while the Godot
+      -- editor is open. Check the port first, so a closed editor means no LSP
+      -- instead of a connection error. If you open Godot after the file, :e it.
+      local godot_port = tonumber(os.getenv('GDScript_Port') or '6005')
+      vim.lsp.config('gdscript', {
+        root_dir = function(bufnr, on_dir)
+          local root = vim.fs.root(bufnr, { 'project.godot', '.git' })
+          local probe = vim.uv.new_tcp()
+          probe:connect('127.0.0.1', godot_port, function(err)
+            probe:close()
+            if not err then
+              on_dir(root)
+            end
+          end)
+        end,
+      })
 
-      if vim.fn.executable('typescript-language-server') == 1 then
-        vim.lsp.config('ts_ls', { capabilities = capabilities })
-        vim.lsp.enable('ts_ls')
+      -- Enable each server only when its binary is installed.
+      local servers = {
+        clangd = 'clangd',
+        pyright = 'pyright-langserver',
+        gopls = 'gopls',
+        ts_ls = 'typescript-language-server',
+        c3 = 'c3-lsp',
+      }
+      for server, executable in pairs(servers) do
+        if vim.fn.executable(executable) == 1 then
+          vim.lsp.enable(server)
+        end
       end
+      vim.lsp.enable('gdscript')
 
       local cmp = require('cmp')
       local luasnip = require('luasnip')
@@ -181,7 +206,7 @@ require('lazy').setup({
     end,
   },
 
-  -- Kept plugins
+  -- Misc plugins
   { 'junegunn/vim-easy-align' },
   { 'tpope/vim-fugitive' },
   { 'junegunn/fzf', build = ':call fzf#install()' },
@@ -204,6 +229,8 @@ vim.keymap.set('n', ',sh',    ':-1read ' .. skeletons .. '/skeleton.sh<CR>:w<CR>
 vim.keymap.set('n', ',html',  ':-1read ' .. skeletons .. '/skeleton.html<CR>4jf>l')
 vim.keymap.set('n', ',mainc', ':-1read ' .. skeletons .. '/skeleton.mainc<CR>')
 vim.keymap.set('n', ',go',    ':-1read ' .. skeletons .. '/skeleton.go<CR>4j$')
+vim.keymap.set('n', ',py',    ':-1read ' .. skeletons .. '/skeleton.py<CR>:w<CR>:e<CR>2j')
+vim.keymap.set('n', ',c3',    ':-1read ' .. skeletons .. '/skeleton.c3<CR>4j$')
 
 -- Keybindings: Brace/tag helpers
 vim.keymap.set('i', ',fi', '{<CR>}<Esc>O')
@@ -219,11 +246,14 @@ vim.keymap.set('n', '<Leader>h/', ':History/<CR>')
 vim.keymap.set('n', '<Leader>H:', 'q:')
 vim.keymap.set('n', '<Leader>H/', 'q/')
 
--- Keybindings: Window navigation
-vim.keymap.set('n', '<C-Left>',  '<C-w>h')
-vim.keymap.set('n', '<C-Down>',  '<C-w>j')
-vim.keymap.set('n', '<C-Up>',    '<C-w>k')
-vim.keymap.set('n', '<C-Right>', '<C-w>l')
+-- Keybindings: Window navigation. Ctrl-w then m/n/e/i, the same direction keys
+-- as tmux panes (prefix m/n/e/i) and bspwm windows (super + m/n/e/i).
+-- This replaces Vim's rarely used Ctrl-w n (new window) and Ctrl-w i (split to
+-- definition); Ctrl-w h/j/k/l still work.
+vim.keymap.set('n', '<C-w>m', '<C-w>h', { desc = 'Window left' })
+vim.keymap.set('n', '<C-w>n', '<C-w>j', { desc = 'Window down' })
+vim.keymap.set('n', '<C-w>e', '<C-w>k', { desc = 'Window up' })
+vim.keymap.set('n', '<C-w>i', '<C-w>l', { desc = 'Window right' })
 
 -- Keybindings: Browser-style buffer navigation
 vim.keymap.set({ 'n', 'i', 'x' }, '<C-Tab>', '<Cmd>bnext<CR>', {
@@ -233,6 +263,8 @@ vim.keymap.set({ 'n', 'i', 'x' }, '<C-S-Tab>', '<Cmd>bprevious<CR>', {
   desc = 'Move to the previous buffer',
 })
 -- Legacy terminals may report Ctrl-Tab as Tab and Ctrl-Shift-Tab as Shift-Tab.
+-- Those terminals also send Ctrl-I as Tab, so there Ctrl-I (jump forward)
+-- switches buffers instead.
 vim.keymap.set('n', '<Tab>', '<Cmd>bnext<CR>', {
   desc = 'Move to the next buffer',
 })
@@ -251,16 +283,9 @@ end, { desc = 'Open Neovim cheatsheet' })
 vim.keymap.set('x', 'ga', '<Plug>(EasyAlign)')
 vim.keymap.set('n', 'ga', '<Plug>(EasyAlign)')
 
--- Transparent background toggle
+-- Color toggles: transparent background, light/dark
 vim.g.transparent_bg = false
 vim.g.light_mode = false
-
-local dark_background_highlights = {
-  Normal = { bg = '#000000' },
-  NonText = { bg = '#000000' },
-  EndOfBuffer = { bg = '#000000' },
-  SignColumn = { bg = '#000000' },
-}
 
 local function apply_color_mode()
   local onedark = require('onedark')
@@ -270,7 +295,7 @@ local function apply_color_mode()
   onedark.set_options('transparent', vim.g.transparent_bg)
   onedark.set_options(
     'highlights',
-    not vim.g.light_mode and not vim.g.transparent_bg and dark_background_highlights or {}
+    not vim.g.light_mode and not vim.g.transparent_bg and black_background or {}
   )
   vim.opt.background = vim.g.light_mode and 'light' or 'dark'
   onedark.load()
@@ -286,11 +311,15 @@ local function toggle_light_mode()
   apply_color_mode()
 end
 
-vim.keymap.set('n', '<leader>tt', toggle_transparent_bg)
-vim.keymap.set('n', '<leader>ll', toggle_light_mode)
+vim.keymap.set('n', '<leader>tt', toggle_transparent_bg, { desc = 'Toggle transparent background' })
+vim.keymap.set('n', '<leader>ll', toggle_light_mode, { desc = 'Toggle light / dark colors' })
 
--- Autocommands
+-- Autocommands (grouped so re-sourcing this file doesn't duplicate them).
+-- Go and GDScript tab settings come from Neovim's own ftplugins.
+local augroup = vim.api.nvim_create_augroup('user_config', { clear = true })
+
 vim.api.nvim_create_autocmd('FileType', {
+  group = augroup,
   pattern = { 'html', 'text' },
   callback = function()
     vim.opt_local.wrap = false
@@ -298,19 +327,10 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 
 vim.api.nvim_create_autocmd('FileType', {
+  group = augroup,
   pattern = { 'markdown' },
   callback = function()
     vim.opt_local.wrap = true
     vim.opt_local.breakindent = true
-  end,
-})
-
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'gdscript',
-  callback = function()
-    vim.opt_local.expandtab = false
-    vim.opt_local.tabstop = 4
-    vim.opt_local.shiftwidth = 4
-    vim.opt_local.softtabstop = 4
   end,
 })

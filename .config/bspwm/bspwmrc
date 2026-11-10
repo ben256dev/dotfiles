@@ -1,9 +1,10 @@
 #!/bin/sh
 
-# Autostart
-sxhkd &
+# Autostart. bspwmrc reruns on `bspc wm -r`, so only start daemons that
+# aren't already running (a second sxhkd would fire every hotkey twice).
+pgrep -x sxhkd > /dev/null || sxhkd &
 feh --bg-scale ~/Pictures/wallpaper.jpg &
-picom --config ~/.config/picom/picom.conf &
+pgrep -x picom > /dev/null || picom --config ~/.config/picom/picom.conf &
 
 # Monitor
 bspc monitor -d 1 2 3 4 5 6 7 8 9

@@ -1,88 +1,120 @@
-# KMonad Colemak-DH Configuration
+# Keyboard: Colemak-DH with KMonad
 
-KMonad config for a Colemak-DH layout with home row mods, navigation, and number layers.
+[KMonad](https://github.com/kmonad/kmonad) remaps the laptop keyboard before anything else sees it, so this layout works everywhere: the login console, X, every app. The keys don't move; only what they type changes. Whenever kmonad isn't running, the keyboard is plain QWERTY.
+
+## At a glance
+
+- **Letters** are Colemak-DH.
+- **Modifiers are on the home row.** Tap these keys for their letter, hold them for a modifier:
+
+  | Hold for | Win | Alt | Ctrl | Shift |
+  |---|---|---|---|---|
+  | Left hand | `a` | `r` | `s` | `t` |
+  | Right hand | `o` | `i` | `e` | `n` |
+
+- **Hold either Alt** for digits, symbols and F-keys (the num layer). The digits are on the home row.
+- **Hold either Shift** for arrows and paging (the nav layer). The arrows are on `m` `n` `e` `i`, the same direction keys bspwm, tmux and nvim use. Space there is Ctrl+Backspace, which deletes a word.
+- **Backspace** is the key right of `'` (QWERTY's `[` key).
+- **Caps Lock** is Esc.
+- **The number row** types `! @ # $ % ^ & * ( )`. Digits come from the num layer.
+- **The physical Shift, Ctrl and Alt keys aren't modifiers.** Shift and Alt hold layers (above). The Ctrl keys and the old Backspace key are `[def]`: "switch to the base layer", which you're already on, so in practice they do nothing.
+- **Right Alt + Left Win** switches to plain QWERTY (for someone else, or games), and the same chord switches back.
 
 ## Layers
 
-### Base Layer (Colemak-DH)
+Each cell is a physical key, laid out like the laptop keyboard. The bottom row is Ctrl, Win, Alt, Space, Alt, Ctrl.
+
+- `·`: same as the base layer
+- `[num]` / `[nav]`: hold for that layer
+- `hold`: the key you're holding to get this layer
+- `[def]`: switch to the base layer
+
+### Base layer
 
 ```
- _    F1   F2   F3   F4   F5   F6   F7   F8   F9   F10  F11  F12
- `    !    @    #    $    %    ^    &    *    (    )    -    =    [reset]
-Tab   q    w    f    p    b    j    l    u    y    '   Bspc  ]    \
-Esc   a    r    s    t    g    m    n    e    i    o    ;   Ret
-[nav] x    c    d    v    z    k    h    ,    .    /   [nav]
-[def] [qw] [num]         Spc       [num] [def]
+Esc   F1    F2    F3    F4    F5    F6    F7    F8    F9    F10   F11   F12
+`     !     @     #     $     %     ^     &     *     (     )     -     =     [def]
+Tab   q     w     f     p     b     j     l     u     y     '     Bksp  ]     \
+Esc   a     r     s     t     g     m     n     e     i     o     ;     Enter
+[nav] x     c     d     v     z     k     h     ,     .     /     [nav]
+[def] Win   [num]             Space             [num] [def]
 ```
 
-- **Home row mods** (180ms tap-hold): `a`=Meta, `r`=Alt, `s`=Ctrl, `t`=Shift / `n`=Shift, `e`=Ctrl, `i`=RAlt, `o`=Meta
-- **Hold `x`**: Ctrl+Backspace (delete word)
-- **Number row** outputs shifted symbols (`!@#$%^&*()`) by default
-
-### Num Layer (hold LAlt or RAlt)
+### Num layer: hold Left Alt or Right Alt
 
 ```
- _    _    _    _    _    _    _    _    _    _    _    _    _
- _    F1   F2   F3  A-F4  F5   F6   F7   F8   F9  F10  F11  F12   _
- _    !    @    #    $    %    ^    &    *    (    )    _    _    _
- -    1    2    3    4    5    6    7    8    9    0    _    _
- _    [    ]    +    {    }    _    =    _    _    _   [def]
-[def] [def] [def]         _        [num] [def]
+·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·
+·     F1    F2    F3    A-F4  F5    F6    F7    F8    F9    F10   F11   F12   ·
+·     !     @     #     $     %     ^     &     *     (     )     ·     ·     ·
+-     1     2     3     4     5     6     7     8     9     0     ·     ·
+·     [     ]     +     {     }     ·     =     ·     ·     ·     [def]
+[def] [def] hold              _                 hold  [def]
 ```
 
-- **Caps Lock position**: `-` (hyphen)
-- **Space**: `_` (underscore)
+Digits on the home row, `-` on Caps Lock, `_` on Space. `A-F4` is Alt+F4.
 
-### Nav Layer (hold LShift or RShift)
-
-Vim-style arrows with navigation keys.
+### Nav layer: hold Left Shift or Right Shift
 
 ```
- _    _    _    _    _    _    _    _    _    _    _    _    _
- _    _    _    _    _    _    _    _    _    _    _    _    _    _
- _    _  C-Bspc _    _    _    _    _   PgUp  _    _    _    _    _
- _    _    _    _    _    _    <-  Down  Up   ->   _    _    _
- _    _    _   PgDn  _    _    _    _    _    _    _    _
- _    _    _             Bspc         [num]  _
+·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·
+·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·     ·
+·     ·     ·     ·     ·     ·     ·     ·     PgUp  ·     ·     ·     ·     ·
+·     ·     ·     ·     ·     ·     ←     ↓     ↑     →     ·     ·     ·
+hold  ·     ·     PgDn  ·     ·     ·     ·     ·     ·     ·     hold
+·     ·     ·                 ^Bksp             [num] ·
 ```
 
-- **Arrows**: vim-style on `hjkl` positions
-- **`w` position**: Ctrl+Backspace (delete word)
-- **`u` position**: Page Up
-- **`d` position**: Page Down
-- **Space**: Backspace
+Arrows on `m` `n` `e` `i`, PgUp on `u`, PgDn on `d`. `^Bksp` is Ctrl+Backspace (delete a word).
 
-### QWERTY Layer (Right Alt + Left Win)
+### QWERTY layer: Right Alt + Left Win
 
-Plain QWERTY with no mods or layers. Hold Right Alt and tap Left Win to switch immediately from Colemak-DH to QWERTY. Use the same chord to switch back. Left Win by itself remains a normal Meta key.
+Plain QWERTY with no home-row mods or layers: every key types what's printed on it, including Ctrl, Shift and Backspace. Hold Right Alt and tap Left Win to switch to it; the same chord switches back. Left Win on its own is a normal Win key in both layouts.
 
-## Systemd Service
+## Setup
 
-The config runs as a systemd service that starts on boot (before login):
-
-```
-/etc/systemd/system/keyboard_mylaptop.service
-```
-
-### Common Commands
+`install.sh` sets this up. To set it up again, for example after changing keyboards:
 
 ```bash
-# Restart after config changes
-sudo kill $(pgrep kmonad) && sudo systemctl restart keyboard_mylaptop.service
-
-# Check status
-systemctl status keyboard_mylaptop.service
-
-# View logs
-journalctl -u keyboard_mylaptop.service -f
-
-# Enable/disable on boot
-sudo systemctl enable keyboard_mylaptop.service
-sudo systemctl disable keyboard_mylaptop.service
+~/dotfiles/.kmonad/setup.sh
 ```
 
-## Config File
+It installs kmonad 0.4.3 to `/usr/local/bin` and adds the boot service `keyboard_mylaptop`, which runs kmonad on `~/.kmonad/colemakdh.kbd` from boot, before you log in.
 
-- **Config**: `~/startup/colemakdh.kbd`
-- **Binary**: `~/.local/bin/kmonad`
-- **Device**: `/dev/input/by-path/platform-i8042-serio-0-event-kbd`
+### Using a different keyboard
+
+The config remaps one keyboard, named on the `input` line at the top of `colemakdh.kbd`:
+
+```
+input (device-file "/dev/input/by-path/platform-i8042-serio-0-event-kbd")
+```
+
+That's the built-in keyboard on most laptops. To find yours, list the keyboards:
+
+```bash
+ls /dev/input/by-id/*-kbd /dev/input/by-path/*-kbd
+```
+
+- **External keyboard:** use its `by-id` path, for example `/dev/input/by-id/usb-Logitech_USB_Keyboard-event-kbd`. It's named after the keyboard, so it works in any USB port. If the keyboard shows up twice, use the entry without `-if01`.
+- **Built-in keyboard:** use its `by-path` path. Those describe where a keyboard is connected, which never changes for a built-in one (and built-in keyboards usually have no `by-id` entry).
+
+Put the path on the `input` line and run `~/dotfiles/.kmonad/setup.sh` again. It won't turn the service on if that path doesn't exist.
+
+## Everyday commands
+
+```bash
+# Check an edited config for mistakes
+kmonad --dry-run ~/.kmonad/colemakdh.kbd
+
+# Apply config edits
+sudo systemctl restart keyboard_mylaptop.service
+
+# Is it running? If not, why?
+systemctl status keyboard_mylaptop.service
+journalctl -u keyboard_mylaptop.service -f
+
+# Turn it off (plain QWERTY) or back on, now and at boot
+sudo systemctl disable --now keyboard_mylaptop.service
+sudo systemctl enable --now keyboard_mylaptop.service
+```
+
+If an edit breaks the config, kmonad won't start and the keyboard is plain QWERTY until you fix it and restart.
