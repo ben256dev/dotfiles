@@ -4,4 +4,4 @@ case "$(cat "$state" 2>/dev/null)" in
     nebula) theme=nebula.rasi ;;
     *) theme=ben256.rasi ;;
 esac
-exec rofi -theme "$HOME/.config/rofi/$theme" "$@"
+exec rofi -monitor -4 -theme "$HOME/.config/rofi/$theme" "$@"
