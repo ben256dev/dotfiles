@@ -1,0 +1,36 @@
+#!/bin/bash
+# Apply config only: no sudo, packages, services, or session restarts.
+set -euo pipefail
+umask 077
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mode="${1:---dry-run}"
+[[ "$mode" == --dry-run || "$mode" == --apply ]] || { echo 'Usage: scripts/apply [--dry-run|--apply]' >&2; exit 2; }
+backup="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/backups/$(date +%Y%m%d-%H%M%S)-$$"
+# Validate the whole manifest before changing anything.
+while IFS= read -r path; do
+    [[ -e "$repo/$path" ]] || { echo "Missing source: $path" >&2; exit 1; }
+done < "$repo/scripts/paths"
+while IFS= read -r path; do
+    src="$repo/$path"; dst="$HOME/$path"
+    if [[ -L "$dst" && "$(readlink -f "$dst")" == "$(readlink -f "$src")" ]]; then
+        continue
+    fi
+    if [[ "$mode" == --dry-run ]]; then
+        printf '%s -> %s\n' "$dst" "$src"
+        continue
+    fi
+    mkdir -p "$(dirname "$dst")" "$backup"
+    printf '%s\n' "$repo" > "$backup/source-repo"
+    if [[ -e "$dst" || -L "$dst" ]]; then
+        mkdir -p "$backup/$(dirname "$path")"
+        mv -- "$dst" "$backup/$path"
+        printf '%s\n' "$path" >> "$backup/replaced-paths"
+    else
+        printf '%s\n' "$path" >> "$backup/new-paths"
+    fi
+    ln -sT -- "$src" "$dst"
+done < "$repo/scripts/paths"
+if [[ -d "$backup" ]]; then
+    printf '%s\n' "$backup" > "$(dirname "$backup")/latest"
+fi
+[[ "$mode" != --apply ]] || echo "Linked dotfiles"

@@ -1,0 +1,22 @@
+#!/bin/bash
+# Restore one apply run. Refuse to overwrite files changed since application.
+set -euo pipefail
+backup="${1:?Usage: scripts/rollback BACKUP_DIRECTORY}"
+[[ -f "$backup/source-repo" ]] || { echo 'Not a dotfiles backup' >&2; exit 1; }
+repo=$(cat "$backup/source-repo")
+paths=()
+for manifest in replaced-paths new-paths; do
+    [[ ! -f "$backup/$manifest" ]] || mapfile -t -O "${#paths[@]}" paths < "$backup/$manifest"
+done
+for path in "${paths[@]}"; do
+    [[ -L "$HOME/$path" && "$(readlink "$HOME/$path")" == "$repo/$path" ]] || {
+        echo "Refusing to replace changed path: $HOME/$path" >&2; exit 1;
+    }
+done
+for path in "${paths[@]}"; do
+    unlink "$HOME/$path"
+    if [[ -e "$backup/$path" || -L "$backup/$path" ]]; then
+        mv -- "$backup/$path" "$HOME/$path"
+    fi
+done
+echo "Restored dotfiles"

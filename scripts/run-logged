@@ -1,0 +1,6 @@
+#!/bin/bash
+# Redirect inside the spinner's child so successful package output stays hidden.
+set -euo pipefail
+log="${1:?Missing log path}"
+shift
+exec "$@" >> "$log" 2>&1

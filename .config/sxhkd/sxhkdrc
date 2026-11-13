@@ -3,7 +3,7 @@ super + Return
 	ghostty
 
 # App launcher
-super + @space
+super + space
 	rofi -show drun
 
 # Reload sxhkd
@@ -58,3 +58,15 @@ super + ctrl + space
 # Quit / restart bspwm (bspwmrc is safe to rerun)
 super + alt + {q,r}
 	bspc {quit,wm -r}
+
+# Focus or launch the last used terminal / browser across monitors.
+alt + {1,2}
+    python3 "$HOME/.config/sxhkd/scripts/focus-app" {terminal,browser}
+
+# Cycle windows on the current desktop; Shift reverses direction.
+super + {_,shift + }c
+    bspc node -f {next,prev}.local.!hidden.window
+
+# Return to the previous window.
+super + grave
+    bspc node -f last

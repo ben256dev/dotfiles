@@ -55,3 +55,35 @@ The entire keyboard is rebound from QWERTY layout to Colemak-DH, with home-row m
 ### Neovim
 
 The changes to Neovim are for the most part minimal. There is a reminder in the bottom right that typing `Space ?` brings you to an editable `CHEATSHEET.md` with most of the important additions.
+
+## Migration
+
+```bash
+./install.sh --migrate   # Install on an existing system
+./install.sh --dry-run   # Preview config links
+./install.sh --apply     # Apply config only
+```
+
+Backups: `~/.local/state/dotfiles/backups/`; `latest` contains the last backup path.
+Restore with `./scripts/rollback BACKUP_DIRECTORY`.
+Package logs: `~/.local/state/dotfiles/logs/`.
+
+Machine settings: `.config/dotfiles/machine.sh` (monitor layout and keyboard device).
+Local shell additions: `~/.local_aliases`.
+
+### Wallpaper
+
+Choose **Wallpaper** in rofi, or run `wallpaper default` / `wallpaper nebula`.
+The selection persists across sessions.
+
+### Window shortcuts
+
+- Super+Return: new Ghostty terminal; Super+Space: rofi launcher.
+- Alt+1 / Alt+2: focus the last used Ghostty / Firefox window, or launch one.
+- Super+Tab: toggle tiled/monocle; Super+C / Super+Shift+C: cycle windows.
+- Super+backtick: previous window; Super+1 through Super+0: desktops 1–10.
+- Super+M/N/E/I: focus left/down/up/right (Colemak-DH); add Shift to move.
+
+With kmonad, the physical Alt keys select the number layer. Use the home-row
+Alt modifier plus a number from that layer for Alt+1/2. Right Alt+Left Win toggles
+plain QWERTY.

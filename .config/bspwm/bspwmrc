@@ -3,11 +3,21 @@
 # Autostart. bspwmrc reruns on `bspc wm -r`, so only start daemons that
 # aren't already running (a second sxhkd would fire every hotkey twice).
 pgrep -x sxhkd > /dev/null || sxhkd &
-feh --bg-scale ~/Pictures/wallpaper.jpg &
+"$HOME/.local/bin/wallpaper" --restore &
 pgrep -x picom > /dev/null || picom --config ~/.config/picom/picom.conf &
 
-# Monitor
-bspc monitor -d 1 2 3 4 5 6 7 8 9
+# Add missing desktops on every monitor without moving or closing windows.
+for monitor in $(bspc query -M); do
+    count=$(bspc query -D -m "$monitor" | wc -l)
+    while [ "$count" -lt 10 ]; do
+        count=$((count + 1))
+        bspc monitor "$monitor" -a "$count"
+    done
+done
+
+# Match the cursor in applications and on the root window.
+[ ! -f "$HOME/.Xresources" ] || xrdb -merge "$HOME/.Xresources"
+xsetroot -xcf /usr/share/icons/Adwaita/cursors/left_ptr 24
 
 # Window appearance
 bspc config border_width         2

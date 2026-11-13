@@ -8,4 +8,4 @@ configuration {
     font: "JetBrains Mono 12";
 }
 
-@theme "ben256"
+@theme "ben256.rasi"

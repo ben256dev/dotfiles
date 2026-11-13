@@ -18,5 +18,4 @@ background = #000000
 foreground = #FFFFFF
 cursor-color = #00FF94
 cursor-text = #FF95FB
-selection-background = cell-foreground
-selection-foreground = cell-background
+selection-invert-fg-bg = true

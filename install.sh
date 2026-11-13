@@ -1,6 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
+# Config-only operations never request sudo or touch packages/services.
+case "${1:-}" in
+    --apply|--dry-run)
+        exec "$(dirname "${BASH_SOURCE[0]}")/scripts/apply" "$1"
+        ;;
+    --migrate) MIGRATE=1 ;;
+    '') MIGRATE=0 ;;
+    *) echo 'Usage: install.sh [--migrate|--apply|--dry-run]' >&2; exit 2 ;;
+esac
+
 START_TIME=$SECONDS
 export TERM="xterm-256color"
 
@@ -67,6 +77,19 @@ else
     DOTFILES_DIR="$HOME/dotfiles"
 fi
 
+umask 077
+INSTALL_LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/logs"
+mkdir -p "$INSTALL_LOG_DIR"
+INSTALL_LOG="$INSTALL_LOG_DIR/install-$(date +%Y%m%d-%H%M%S)-$$.log"
+touch "$INSTALL_LOG"
+
+spin_logged() {
+    local title="$1"
+    shift
+    gum spin --spinner line --title "$title" -- \
+        "$DOTFILES_DIR/scripts/run-logged" "$INSTALL_LOG" "$@"
+}
+
 # Prompt for sudo once, then keep it fresh for the whole run.
 sudo -v
 while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done 2>/dev/null &
@@ -75,14 +98,14 @@ trap 'kill "$SUDO_KEEPALIVE_PID" >/dev/null 2>&1 || true' EXIT
 
 # Bootstrap what this script itself needs. Errors stay visible.
 echo -ne "${BLUE}::${NC} Preparing apt..."
-"${APT[@]}" update >/dev/null
-"${APT[@]}" install curl git gnupg ca-certificates >/dev/null
+"${APT[@]}" update >> "$INSTALL_LOG" 2>&1
+"${APT[@]}" install curl git gnupg ca-certificates >> "$INSTALL_LOG" 2>&1
 sudo mkdir -p /etc/apt/keyrings
 if ! command -v gum &>/dev/null; then
     curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor --yes -o /etc/apt/keyrings/charm.gpg
     echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list > /dev/null
-    "${APT[@]}" update >/dev/null
-    "${APT[@]}" install gum >/dev/null
+    "${APT[@]}" update >> "$INSTALL_LOG" 2>&1
+    "${APT[@]}" install gum >> "$INSTALL_LOG" 2>&1
 fi
 
 # Clear screen and reprint clean
@@ -91,7 +114,7 @@ banner
 ok "Updated package lists"
 
 install_packages() {
-    local pkg
+    local pkg candidate installed
     local resolved=()
     local to_install=()
 
@@ -109,7 +132,15 @@ install_packages() {
     fi
 
     for pkg in "${resolved[@]}"; do
-        dpkg -s "$pkg" &>/dev/null || to_install+=("$pkg")
+        if ! dpkg-query -W -f='${db:Status-Status}' "$pkg" 2>/dev/null | grep -qx installed; then
+            to_install+=("$pkg")
+        elif [ "${PACKAGE_SOURCE:-apt}" = github ]; then
+            candidate=$(apt-cache policy "$pkg" | sed -n 's/^  Candidate: //p')
+            installed=$(dpkg-query -W -f='${Version}' "$pkg")
+            if dpkg --compare-versions "$installed" lt "$candidate"; then
+                to_install+=("$pkg")
+            fi
+        fi
     done
 
     local total=${#to_install[@]}
@@ -120,6 +151,7 @@ install_packages() {
     fi
 
     local current=0 failed=0 filled bar pad
+    local -a install_command
     for pkg in "${to_install[@]}"; do
         current=$((current + 1))
         filled=$((current * 20 / total))
@@ -127,9 +159,14 @@ install_packages() {
         printf -v pad '%*s' "$((20 - filled))" ''
         bar=${bar// /█}
         pad=${pad// /░}
-        if ! gum spin --spinner line --show-error --title "Installing packages [${current}/${total}] ${bar}${pad} ${pkg}" -- \
-            "${APT[@]}" install "$pkg"; then
-            warn "Failed to install ${pkg}; continuing"
+        if [ "${PACKAGE_SOURCE:-apt}" = github ] && [ "$pkg" != diff-so-fancy ] && [ "$pkg" != aha ]; then
+            install_command=(python3 "$DOTFILES_DIR/scripts/install-release-deb" "$pkg")
+        else
+            install_command=("${APT[@]}" --no-remove install "$pkg")
+        fi
+        if ! spin_logged "Installing packages [${current}/${total}] ${bar}${pad} ${pkg}" \
+            "${install_command[@]}"; then
+            warn "Failed to install ${pkg}"
             failed=$((failed + 1))
         fi
     done
@@ -137,7 +174,8 @@ install_packages() {
 }
 
 PACKAGES=(
-    neovim
+    python3
+    adwaita-icon-theme
     tmux
     xorg
     x11-utils
@@ -152,7 +190,6 @@ PACKAGES=(
     fd-find
     bspwm
     sxhkd
-    fastfetch
     tree
     rofi
     papirus-icon-theme
@@ -174,37 +211,8 @@ if [ ! -f "$DOTFILES_DIR/install.sh" ]; then
     ok "Cloned dotfiles into $DOTFILES_DIR"
 fi
 
-# Symlink a repo path to the same path under $HOME. Anything already there that
-# isn't a symlink is moved aside to <path>.bak.<timestamp>, never overwritten.
-link() {
-    local src="$DOTFILES_DIR/$1"
-    local dst="$HOME/$1"
+# Apply only after packages are installed (below).
 
-    mkdir -p "$(dirname "$dst")"
-    if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-        mv "$dst" "$dst.bak.$(date +%Y%m%d%H%M%S)"
-        warn "Moved existing ~/$1 aside to ~/$1.bak.*"
-    fi
-    ln -sfn "$src" "$dst"
-}
-
-mkdir -p -m 700 "$HOME/.ssh"
-for path in \
-    .bashrc .bash_aliases .gitconfig .xinitrc .ssh/config \
-    .tmux.conf .tmux/copy.sh .tmux/battery.sh .kmonad .local/bin/v \
-    .config/nvim .config/ghostty .config/rofi \
-    .config/bspwm .config/sxhkd .config/picom
-do
-    link "$path"
-done
-
-# Remove dangling links to files this repo no longer ships.
-for path in .vimrc .vim .dircolors .config/shell/v.sh; do
-    if [ -L "$HOME/$path" ] && [ ! -e "$HOME/$path" ]; then
-        rm "$HOME/$path"
-    fi
-done
-ok "Linked dotfiles"
 
 # Set up ghostty repo (also provides zig, lazygit, yazi, eza, uv, bun, ...)
 DIST_CODENAME="$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-}")"
@@ -214,16 +222,22 @@ curl -fsSL https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc
 # Older versions of this script trusted the key for every repo; scope it instead.
 sudo rm -f /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
 echo "deb [signed-by=$GRIFFO_KEY] https://debian.griffo.io/apt ${DIST_CODENAME} main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
-gum spin --spinner line --show-error --title "Updating package lists" -- "${APT[@]}" update
+spin_logged "Updating package lists" "${APT[@]}" update
 ok "Added ghostty repo"
 
-install_packages zig ghostty lazygit yazi eza uv diff-so-fancy aha zoxide bun tigerbeetle
+# Public GitHub assets have the same SHA256 as the signed apt index, and do
+# not require the mirror's new subscription. Keep downloads quiet and verified.
+PACKAGE_SOURCE=github install_packages fastfetch neovim zig ghostty lazygit yazi eza uv diff-so-fancy aha zoxide bun tigerbeetle
+
+# Leave only the free mirror configured for future apt updates/upgrades.
+echo "deb [signed-by=$GRIFFO_KEY] https://deb-free.griffo.io/apt ${DIST_CODENAME} main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
+spin_logged "Refreshing free package source" "${APT[@]}" update
 
 if command -v gdformat >/dev/null 2>&1; then
     ok "gdtoolkit is already installed"
 elif ! command -v uv >/dev/null 2>&1; then
     warn "uv is not installed; skipping gdtoolkit"
-elif gum spin --spinner line --show-error --title "Installing gdtoolkit" -- uv tool install gdtoolkit; then
+elif spin_logged "Installing gdtoolkit" uv tool install gdtoolkit; then
     ok "Installed gdtoolkit"
 else
     warn "Failed to install gdtoolkit; continuing"
@@ -246,7 +260,7 @@ fi
 
 # Quiet SSH logins: no motd, no "Last login" line. A drop-in file leaves
 # Debian's sshd_config untouched, so package upgrades don't prompt about it.
-if [ -f /etc/ssh/sshd_config ]; then
+if [ "$MIGRATE" -eq 0 ] && [ -f /etc/ssh/sshd_config ]; then
     sudo chmod -x /etc/update-motd.d/* 2>/dev/null || true
     sudo truncate -s 0 /etc/motd
     sudo mkdir -p /etc/ssh/sshd_config.d
@@ -259,12 +273,19 @@ if [ -f /etc/ssh/sshd_config ]; then
     fi
 fi
 
+# Fail visibly rather than replacing working hotkeys with missing programs.
+for required in ghostty rofi bspc sxhkd python3 nvim tmux dbus-launch feh picom; do
+    need_cmd "$required"
+done
+"$DOTFILES_DIR/scripts/apply" --apply >/dev/null
+ok "Linked dotfiles"
+
 # Keyboard remapping (Colemak-DH) as a boot-time service. Last, so the layout
 # only changes once everything else is done.
-if gum spin --spinner line --show-error --title "Setting up kmonad" -- "$DOTFILES_DIR/.kmonad/setup.sh"; then
-    ok "Set up kmonad: the keyboard is now Colemak-DH (Right Alt + Left Win toggles QWERTY)"
+if spin_logged "Setting up kmonad" "$DOTFILES_DIR/.kmonad/setup.sh"; then
+    ok "Set up kmonad"
 else
-    warn "kmonad isn't running; see the message above and .kmonad/README.md"
+    fail "kmonad setup failed"
 fi
 
 elapsed=$(( SECONDS - START_TIME ))

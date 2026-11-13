@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""Focus the most recently used matching bspwm window, or launch the app."""
+import json
+import subprocess
+import sys
+
+apps = {
+    "terminal": ({"com.mitchellh.ghostty", "ghostty"}, ["ghostty"]),
+    "browser": ({"firefox-esr", "firefox", "navigator"}, None),
+}
+classes, command = apps[sys.argv[1]]
+if command is None:
+    import shutil
+    command = ["firefox-esr" if shutil.which("firefox-esr") else "firefox"]
+state = json.loads(subprocess.check_output(["bspc", "wm", "-d"]))
+windows = set()
+def visit(node):
+    if not node:
+        return
+    client = node.get("client")
+    if client and client["className"].lower() in classes:
+        windows.add(node["id"])
+    visit(node.get("firstChild"))
+    visit(node.get("secondChild"))
+for monitor in state["monitors"]:
+    for desktop in monitor["desktops"]:
+        visit(desktop["root"])
+for entry in reversed(state["focusHistory"]):
+    if entry["nodeId"] in windows:
+        subprocess.run(["bspc", "node", str(entry["nodeId"]), "-g", "hidden=off"], check=True)
+        subprocess.run(["bspc", "node", str(entry["nodeId"]), "-f"], check=True)
+        break
+else:
+    if windows:
+        subprocess.run(["bspc", "node", str(min(windows)), "-f"], check=True)
+    else:
+        subprocess.Popen(command, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

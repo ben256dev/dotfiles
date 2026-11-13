@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Wallpaper
+Exec=sh -c "exec ~/.local/bin/wallpaper"
+Icon=preferences-desktop-wallpaper
+Categories=Settings;DesktopSettings;
+Terminal=false

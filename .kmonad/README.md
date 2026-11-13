@@ -78,7 +78,11 @@ Plain QWERTY with no home-row mods or layers: every key types what's printed on 
 ~/dotfiles/.kmonad/setup.sh
 ```
 
-It installs kmonad 0.4.3 to `/usr/local/bin` and adds the boot service `keyboard_mylaptop`, which runs kmonad on `~/.kmonad/colemakdh.kbd` from boot, before you log in.
+Machine-specific `KMONAD_DEVICE` can be set in `~/.config/dotfiles/machine.sh`.
+Setup renders the template into root-owned `/etc/kmonad/dotfiles.kbd`; the service
+uses that rendered file. Rerun setup after changing the template or device.
+
+It installs kmonad 0.4.3 to `/usr/local/bin` and adds the boot service `keyboard_mylaptop`, which runs kmonad on `/etc/kmonad/dotfiles.kbd` from boot, before you log in.
 
 ### Using a different keyboard
 

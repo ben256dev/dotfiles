@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+state="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/wallpaper"
+choice=${1:-}
+case "$choice" in
+    --restore) choice=$(cat "$state" 2>/dev/null || printf default) ;;
+    '') choice=$(printf 'Default\nNebula\n' | rofi -dmenu -i -p Wallpaper) || exit 0 ;;
+esac
+case "$choice" in
+    default|Default) choice=default; image="$HOME/Pictures/wallpaper.jpg" ;;
+    nebula|Nebula) choice=nebula; image="$HOME/.local/share/wallpapers/nebula.jpg" ;;
+    *) exit 2 ;;
+esac
+[ -f "$image" ] || exit 1
+feh --bg-scale "$image"
+mkdir -p "$(dirname "$state")"
+printf '%s\n' "$choice" > "$state"
