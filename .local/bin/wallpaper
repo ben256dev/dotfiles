@@ -12,6 +12,10 @@ case "$choice" in
     *) exit 2 ;;
 esac
 [ -f "$image" ] || exit 1
-feh --bg-scale "$image"
+if [ "$choice" = nebula ]; then
+    feh --no-xinerama --bg-fill "$image"
+else
+    feh --bg-scale "$image"
+fi
 mkdir -p "$(dirname "$state")"
 printf '%s\n' "$choice" > "$state"
