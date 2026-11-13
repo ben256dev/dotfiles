@@ -8,3 +8,5 @@ machine_display_setup() {
             --output HDMI-A-0 --mode 1920x1080 --rotate right --pos 1920x0 --primary
     fi
 }
+
+FIREFOX_GTK_PREFIX="$HOME/.local/opt/gtk-3.24.52"

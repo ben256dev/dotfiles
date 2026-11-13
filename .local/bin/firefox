@@ -1,0 +1,9 @@
+#!/bin/sh
+if [ -r "$HOME/.config/dotfiles/machine.sh" ]; then
+    . "$HOME/.config/dotfiles/machine.sh"
+fi
+if [ -n "${FIREFOX_GTK_PREFIX:-}" ] && [ -r "$FIREFOX_GTK_PREFIX/lib/libgtk-3.so.0" ]; then
+    export LD_LIBRARY_PATH="$FIREFOX_GTK_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export GSETTINGS_SCHEMA_DIR="$FIREFOX_GTK_PREFIX/share/glib-2.0/schemas"
+fi
+exec /usr/bin/firefox-esr "$@"

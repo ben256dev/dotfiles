@@ -11,7 +11,9 @@ apps = {
 classes, command = apps[sys.argv[1]]
 if command is None:
     import shutil
-    command = ["firefox-esr" if shutil.which("firefox-esr") else "firefox"]
+    from pathlib import Path
+    wrapper = Path.home() / ".local/bin/firefox"
+    command = [str(wrapper)] if wrapper.exists() else ["firefox-esr" if shutil.which("firefox-esr") else "firefox"]
 state = json.loads(subprocess.check_output(["bspc", "wm", "-d"]))
 windows = set()
 def visit(node):

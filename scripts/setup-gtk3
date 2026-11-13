@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+version=3.24.52
+checksum=80931fa472a77b9a164f6740e3c0b444fac6770054632d35a7ff9d679e5e7b9f
+prefix="$HOME/.local/opt/gtk-$version"
+work="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/build"
+if [[ -f "$prefix/.complete" ]]; then exit 0; fi
+if ! command -v gcc >/dev/null || ! command -v meson >/dev/null || ! command -v sassc >/dev/null || ! pkg-config --exists gtk+-3.0; then
+    sudo -n DEBIAN_FRONTEND=noninteractive apt-get -qq -y --no-remove --no-install-recommends install \
+        build-essential pkg-config libgtk-3-dev meson ninja-build sassc
+fi
+triplet=$(gcc -dumpmachine)
+export PKG_CONFIG_LIBDIR="/usr/lib/$triplet/pkgconfig:/usr/share/pkgconfig"
+export PKG_CONFIG_PATH=
+mkdir -p "$work"
+archive="$work/gtk-$version.tar.xz"
+if [[ ! -f "$archive" ]] || [[ "$(sha256sum "$archive" | cut -d ' ' -f 1)" != "$checksum" ]]; then
+    curl -fsSL --retry 3 "https://download.gnome.org/sources/gtk/3.24/gtk-$version.tar.xz" -o "$archive.part"
+    mv "$archive.part" "$archive"
+fi
+printf '%s  %s\n' "$checksum" "$archive" | sha256sum --check --quiet -
+if [[ ! -d "$work/gtk-$version" ]]; then
+    tar -xJf "$archive" -C "$work"
+fi
+setup_mode=()
+[[ ! -f "$work/gtk-$version-build/meson-private/coredata.dat" ]] || setup_mode+=(--wipe)
+meson setup "${setup_mode[@]}" "$work/gtk-$version-build" "$work/gtk-$version" \
+    --prefix "$prefix" --libdir lib --buildtype release \
+    -Dwayland_backend=false -Dbroadway_backend=false -Dintrospection=false \
+    -Dgtk_doc=false -Dman=false -Ddemos=false -Dexamples=false -Dtests=false
+jobs=$(nproc)
+(( jobs <= 8 )) || jobs=8
+ninja -C "$work/gtk-$version-build" -j "$jobs"
+ninja -C "$work/gtk-$version-build" install
+touch "$prefix/.complete"

@@ -71,6 +71,10 @@ Package logs: `~/.local/state/dotfiles/logs/`.
 Machine settings: `.config/dotfiles/machine.sh` (monitor layout and keyboard device).
 Local shell additions: `~/.local_aliases`.
 
+`FIREFOX_GTK_PREFIX` selects Firefox's GTK build. `scripts/setup-gtk3` builds
+GTK 3.24.52 under `~/.local/opt` with the X11 border fix. The Firefox launcher
+uses it; other applications keep Debian's GTK.
+
 ### Wallpaper
 
 Choose **Wallpaper** in rofi, or run `wallpaper default` / `wallpaper nebula`.

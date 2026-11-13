@@ -20,3 +20,5 @@
 .local/share/wallpapers/nebula.jpg
 .local/share/applications/wallpaper.desktop
 .local/bin/launcher
+.local/bin/firefox
+.config/gtk-3.0/gtk.css

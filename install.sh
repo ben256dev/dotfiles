@@ -274,12 +274,23 @@ if [ "$MIGRATE" -eq 0 ] && [ -f /etc/ssh/sshd_config ]; then
     fi
 fi
 
+if [ -r "$DOTFILES_DIR/.config/dotfiles/machine.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$DOTFILES_DIR/.config/dotfiles/machine.sh"
+fi
+if [ -n "${FIREFOX_GTK_PREFIX:-}" ]; then
+    spin_logged "Building GTK" "$DOTFILES_DIR/scripts/setup-gtk3"
+fi
+
 # Fail visibly rather than replacing working hotkeys with missing programs.
 for required in ghostty rofi bspc sxhkd python3 nvim tmux dbus-launch feh picom; do
     need_cmd "$required"
 done
 "$DOTFILES_DIR/scripts/apply" --apply >/dev/null
 ok "Linked dotfiles"
+if [ -n "${FIREFOX_GTK_PREFIX:-}" ]; then
+    python3 "$DOTFILES_DIR/scripts/firefox-launcher"
+fi
 
 # Keyboard remapping (Colemak-DH) as a boot-time service. Last, so the layout
 # only changes once everything else is done.
