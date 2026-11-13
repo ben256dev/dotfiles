@@ -1,0 +1,7 @@
+@import "ben256.rasi"
+* {
+    bg-alt: #10121C;
+    accent: #8FAEFF;
+    border-col: #8FAEFF;
+    selected: #8FAEFF33;
+}

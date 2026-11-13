@@ -4,7 +4,7 @@ super + Return
 
 # App launcher
 super + space
-	rofi -show drun
+	"$HOME/.local/bin/launcher" -show drun
 
 # Reload sxhkd
 super + Escape

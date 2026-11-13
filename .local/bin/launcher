@@ -1,0 +1,7 @@
+#!/bin/sh
+state="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/wallpaper"
+case "$(cat "$state" 2>/dev/null)" in
+    nebula) theme=nebula.rasi ;;
+    *) theme=ben256.rasi ;;
+esac
+exec rofi -theme "$HOME/.config/rofi/$theme" "$@"

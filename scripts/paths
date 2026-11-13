@@ -19,3 +19,4 @@
 .local/bin/wallpaper
 .local/share/wallpapers/nebula.jpg
 .local/share/applications/wallpaper.desktop
+.local/bin/launcher

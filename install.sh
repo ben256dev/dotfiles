@@ -183,6 +183,7 @@ PACKAGES=(
     xinit
     xclip
     feh
+    imagemagick
     picom
     suckless-tools
     dbus-x11
