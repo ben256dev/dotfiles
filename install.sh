@@ -86,7 +86,7 @@ touch "$INSTALL_LOG"
 spin_logged() {
     local title="$1"
     shift
-    gum spin --spinner line --title "$title" -- \
+    env -u NO_COLOR gum spin --spinner.foreground=212 --spinner line --title "$title" -- \
         "$DOTFILES_DIR/scripts/run-logged" "$INSTALL_LOG" "$@"
 }
 
@@ -207,7 +207,7 @@ install_packages "${PACKAGES[@]}"
 
 # When piped from the web, fetch the repo so there is something to link to.
 if [ ! -f "$DOTFILES_DIR/install.sh" ]; then
-    gum spin --spinner line --show-error --title "Cloning dotfiles" -- \
+    env -u NO_COLOR gum spin --spinner.foreground=212 --spinner line --show-error --title "Cloning dotfiles" -- \
         git clone -q -b main https://github.com/ben256dev/dotfiles.git "$DOTFILES_DIR"
     ok "Cloned dotfiles into $DOTFILES_DIR"
 fi
@@ -249,7 +249,7 @@ if [ -f "$WALLPAPER" ]; then
     ok "Wallpaper already downloaded"
 else
     mkdir -p "$(dirname "$WALLPAPER")"
-    if gum spin --spinner line --title "Downloading wallpaper" -- \
+    if env -u NO_COLOR gum spin --spinner.foreground=212 --spinner line --title "Downloading wallpaper" -- \
         curl -fsSL "https://unsplash.com/photos/SowPhAbCbcs/download?force=true" -o "$WALLPAPER.part"; then
         mv "$WALLPAPER.part" "$WALLPAPER"
         ok "Downloaded wallpaper"
