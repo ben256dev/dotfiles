@@ -47,10 +47,12 @@ printf 'uinput\n' | sudo tee /etc/modules-load.d/kmonad.conf >/dev/null
 sudo tee "/etc/systemd/system/$SERVICE.service" > /dev/null <<EOF
 [Unit]
 Description=KMonad keyboard remapping ($CONFIG)
+StartLimitIntervalSec=0
 
 [Service]
 ExecStart=$KMONAD_BIN $CONFIG
 Restart=always
+RestartSec=2
 
 [Install]
 WantedBy=multi-user.target
@@ -58,6 +60,7 @@ EOF
 sudo systemctl daemon-reload
 
 sudo systemctl enable --quiet "$SERVICE"
+sudo systemctl reset-failed "$SERVICE"
 sudo systemctl restart "$SERVICE"
 sleep 1
 sudo systemctl is-active --quiet "$SERVICE"
