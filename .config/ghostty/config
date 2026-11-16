@@ -11,3 +11,6 @@ confirm-close-surface = false
 theme = ben256
 bold-is-bright = false
 gtk-custom-css = ~/.config/ghostty/style.css
+
+# Every terminal window starts its own tmux session; exiting tmux closes the window.
+command = tmux new-session
