@@ -17,6 +17,9 @@ case $- in
       *) return;;
 esac
 
+# Keep terminal colors enabled even when a parent process exports NO_COLOR.
+unset NO_COLOR
+
 # History: skip duplicates and lines starting with a space; append, don't overwrite.
 HISTCONTROL=ignoreboth
 shopt -s histappend
