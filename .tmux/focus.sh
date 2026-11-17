@@ -30,6 +30,26 @@ text_only() {
     perl -pe "s/bg=#[0-9a-f]{6}/bg=$bg/gi; s/\xee\x82[\xb0\xb2]/ /g"
 }
 
+# Each tmux command redraws the status bar, so a change made one command at a
+# time shows its half-done states: with status-bg cleared but status-style not
+# yet set, tmux's default green bar flashes up. Queue the commands with "cmd"
+# and send them all in one tmux call ("apply") so the bar changes at once.
+cmd() {
+    for arg; do queue="$queue$arg
+"; done
+    queue="$queue;
+"
+}
+apply() {
+    [ -n "$queue" ] || return 0
+    printf '%s' "$queue" | {
+        set --
+        while IFS= read -r line; do set -- "$@" "$line"; done
+        tmux "$@"
+    }
+    queue=
+}
+
 focus_out() {
     windows=$(tmux list-windows -t "$1" -F '#{window_id}') || return 0
     # Match Neovim's background when it's open in the active pane (it sets
@@ -38,23 +58,25 @@ focus_out() {
     bg=${bg:-default}
     # The session badge's dark text would vanish on the terminal background,
     # so it takes the bar's text colour.
-    tmux set -t "$1" status-left "$(tmux show -gv status-left | grey | sed "s/fg=$bar/fg=$(tmux show -gv status-fg)/" | text_only)"
-    tmux set -t "$1" status-right ''
-    # status-bg wins over status-style, so clear both.
-    tmux set -t "$1" status-bg "$bg"
-    tmux set -t "$1" status-style "bg=$bg,fg=$(tmux show -gv status-fg | grey)"
+    cmd set -t "$1" status-left "$(tmux show -gv status-left | grey | sed "s/fg=$bar/fg=$(tmux show -gv status-fg)/" | text_only)"
+    cmd set -t "$1" status-right ''
+    # status-bg wins over status-style, so set both.
+    cmd set -t "$1" status-style "bg=$bg,fg=$(tmux show -gv status-fg | grey)"
+    cmd set -t "$1" status-bg "$bg"
     for opt in window-status-format window-status-current-format; do
         value=$(tmux show -gwv "$opt" | grey | text_only)
-        for window in $windows; do tmux set -w -t "$window" "$opt" "$value"; done
+        for window in $windows; do cmd set -w -t "$window" "$opt" "$value"; done
     done
+    apply
 }
 
 focus_in() {
     windows=$(tmux list-windows -t "$1" -F '#{window_id}') || return 0
-    for opt in status-left status-right status-bg status-style; do tmux set -u -t "$1" "$opt"; done
+    for opt in status-left status-right status-bg status-style; do cmd set -u -t "$1" "$opt"; done
     for opt in window-status-format window-status-current-format; do
-        for window in $windows; do tmux set -wu -t "$window" "$opt"; done
+        for window in $windows; do cmd set -wu -t "$window" "$opt"; done
     done
+    apply
 }
 
 focused() {
