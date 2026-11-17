@@ -13,8 +13,10 @@ bold-is-bright = false
 gtk-custom-css = ~/.config/ghostty/style.css
 
 # Every terminal window starts its own tmux session (named 1, 2, 3, ..., reusing
-# freed numbers); exiting tmux closes the window.
-command = exec ~/.local/bin/tmux-session
+# freed numbers); exiting tmux closes the window. Falls back to plain tmux when
+# the helper isn't linked yet (a pull without `install.sh --apply`), so a
+# window never closes straight away.
+command = if [ -x ~/.local/bin/tmux-session ]; then exec ~/.local/bin/tmux-session; else exec tmux new-session; fi
 
 # Let Ctrl+Tab / Ctrl+Shift+Tab reach tmux and Neovim (buffer switching)
 # instead of switching Ghostty tabs.
