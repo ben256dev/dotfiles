@@ -31,6 +31,12 @@ else
     fail "Not a disk name: $disk"
 fi
 
+read -rp "Hostname for the new machine (empty = debian): " hostname
+hostname="${hostname:-debian}"
+[[ "$hostname" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || fail "Not a hostname: $hostname"
+HOSTNAME_LINES="d-i netcfg/get_hostname string $hostname
+d-i netcfg/hostname string $hostname"
+
 # The repo's preseed.cfg holds no password. Only a hash of the one typed here
 # goes into the ISO.
 read -rsp "Password for the new user: " password; echo
@@ -49,10 +55,18 @@ chmod -R u+w "$WORKDIR"
 
 echo "Injecting preseed.cfg..."
 grep -q '__PASSWORD_HASH__' "$SCRIPT_DIR/preseed.cfg" || fail "preseed.cfg has no __PASSWORD_HASH__ placeholder"
-grep -q '^# __INSTALL_DISK__$' "$SCRIPT_DIR/preseed.cfg" || fail "preseed.cfg has no '# __INSTALL_DISK__' placeholder"
-sed -e "s|__PASSWORD_HASH__|$PASSWORD_HASH|" \
-    -e "s|^# __INSTALL_DISK__\$|$DISK_LINE|" \
-    "$SCRIPT_DIR/preseed.cfg" > "$WORKDIR/preseed.cfg"
+for placeholder in __INSTALL_DISK__ __HOSTNAME__; do
+    grep -q "^# $placeholder\$" "$SCRIPT_DIR/preseed.cfg" || fail "preseed.cfg has no '# $placeholder' placeholder"
+done
+# awk reads the values from the environment, so nothing in them needs escaping.
+PASSWORD_HASH="$PASSWORD_HASH" DISK_LINE="$DISK_LINE" HOSTNAME_LINES="$HOSTNAME_LINES" \
+awk '
+    $0 == "# __INSTALL_DISK__" { print ENVIRON["DISK_LINE"]; next }
+    $0 == "# __HOSTNAME__"     { print ENVIRON["HOSTNAME_LINES"]; next }
+    { i = index($0, "__PASSWORD_HASH__")
+      if (i) $0 = substr($0, 1, i - 1) ENVIRON["PASSWORD_HASH"] substr($0, i + 17)
+      print }
+' "$SCRIPT_DIR/preseed.cfg" > "$WORKDIR/preseed.cfg"
 
 echo "Updating boot configs..."
 # Add the preseed to every install entry (not rescue mode). Fail loudly if
