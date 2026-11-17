@@ -212,6 +212,14 @@ require('lazy').setup({
   { 'junegunn/fzf', build = ':call fzf#install()' },
   { 'junegunn/fzf.vim' },
   { 'tpope/vim-repeat' },
+}, {
+  performance = {
+    rtp = {
+      -- Debian ships Neovim's bundled treesitter parsers (markdown, lua, vim,
+      -- ...) in /usr/lib/nvim. Lazy's runtimepath reset drops it otherwise.
+      paths = { '/usr/lib/nvim' },
+    },
+  },
 })
 
 -- nvim-lspconfig defers to Neovim's built-in :lsp command on 0.12+, which
