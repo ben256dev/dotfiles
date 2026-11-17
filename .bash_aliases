@@ -15,3 +15,20 @@ export ONYX="benjaminblodgett311@onyx.boisestate.edu"
 alias onyx="ssh $ONYX"
 alias godot="$HOME/.local/bin/godot4 >/dev/null 2>&1"
 alias cdr="codex resume --last --yolo --no-daemon"
+
+# Clipboard: `cmd | copy`, `paste`. Wayland or X11, whichever is running
+# (functions, so the choice is made when they run, not when the shell starts).
+copy() {
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null; then
+        wl-copy "$@"
+    else
+        xclip -selection clipboard -in "$@"
+    fi
+}
+paste() {
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-paste >/dev/null; then
+        wl-paste "$@"
+    else
+        xclip -selection clipboard -out "$@"
+    fi
+}
