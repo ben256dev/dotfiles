@@ -25,6 +25,11 @@ This repo includes a `preseed.cfg` and a script to build a custom Debian netinst
 
 **Warning:** the preseeded installer erases the install disk without asking for confirmation. Only boot it on a machine you mean to wipe.
 
+`build_iso.sh` asks which disk the installer should erase:
+
+- **Name a disk** (for example `nvme0n1`): the install runs unattended and erases that disk. Use this when you know the target machine's disk name.
+- **Leave it empty:** the installer asks two questions. For the partitioning method, pick **Guided - use entire disk and set up LVM** to match the unattended install. Then it lists the disks with their sizes and models; the one you pick is erased right away, with no further confirmation. Everything else stays automatic. Use this when the target machine has more than one disk (a USB stick, including a Ventoy stick, counts) or you don't know its disk names.
+
 Fork and edit `preseed.cfg` to match your preferences, then build the ISO:
 
 ### Building the ISO

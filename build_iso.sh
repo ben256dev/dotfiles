@@ -16,6 +16,21 @@ command -v xorriso >/dev/null || fail "Missing xorriso (sudo apt install xorriso
 command -v openssl >/dev/null || fail "Missing openssl (sudo apt install openssl)"
 [ -f "$MBR" ] || fail "Missing $MBR (sudo apt install isolinux)"
 
+# Naming the disk makes the install fully unattended. Leaving it empty makes
+# the installer list the disks and ask, which is safer when the target machine
+# has more than one (a USB stick counts) or you don't know its disk names.
+echo "Disks on this machine (only relevant if you'll install on this machine):"
+lsblk -dno NAME,SIZE,MODEL -e 7 | sed 's/^/  /'
+read -rp "Disk to erase, e.g. nvme0n1 (empty = choose during install): " disk
+disk="${disk#/dev/}"
+if [ -z "$disk" ]; then
+    DISK_LINE="# Install disk: chosen during installation"
+elif [[ "$disk" =~ ^[a-z0-9]+$ ]]; then
+    DISK_LINE="d-i partman-auto/disk string /dev/$disk"
+else
+    fail "Not a disk name: $disk"
+fi
+
 # The repo's preseed.cfg holds no password. Only a hash of the one typed here
 # goes into the ISO.
 read -rsp "Password for the new user: " password; echo
@@ -34,7 +49,10 @@ chmod -R u+w "$WORKDIR"
 
 echo "Injecting preseed.cfg..."
 grep -q '__PASSWORD_HASH__' "$SCRIPT_DIR/preseed.cfg" || fail "preseed.cfg has no __PASSWORD_HASH__ placeholder"
-sed "s|__PASSWORD_HASH__|$PASSWORD_HASH|" "$SCRIPT_DIR/preseed.cfg" > "$WORKDIR/preseed.cfg"
+grep -q '^# __INSTALL_DISK__$' "$SCRIPT_DIR/preseed.cfg" || fail "preseed.cfg has no '# __INSTALL_DISK__' placeholder"
+sed -e "s|__PASSWORD_HASH__|$PASSWORD_HASH|" \
+    -e "s|^# __INSTALL_DISK__\$|$DISK_LINE|" \
+    "$SCRIPT_DIR/preseed.cfg" > "$WORKDIR/preseed.cfg"
 
 echo "Updating boot configs..."
 # Add the preseed to every install entry (not rescue mode). Fail loudly if
@@ -61,4 +79,8 @@ xorriso -as mkisofs \
     -no-emul-boot -isohybrid-gpt-basdat \
     "$WORKDIR"
 
-echo "Done: $OUTPUT"
+if [ -n "$disk" ]; then
+    echo "Done: $OUTPUT (erases /dev/$disk without asking)"
+else
+    echo "Done: $OUTPUT (asks which disk to erase)"
+fi
