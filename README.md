@@ -68,7 +68,7 @@ Backups: `~/.local/state/dotfiles/backups/`; `latest` contains the last backup p
 Restore with `./scripts/rollback BACKUP_DIRECTORY`.
 Package logs: `~/.local/state/dotfiles/logs/`.
 
-Machine settings: `.config/dotfiles/machine.sh` (monitor layout and keyboard device).
+Machine settings: `.config/dotfiles/machines/<hostname>.sh` (monitor layout and keyboard device), or untracked `~/.config/dotfiles/local.sh`. None by default.
 Local shell additions: `~/.local_aliases`.
 
 `FIREFOX_GTK_PREFIX` selects Firefox's GTK build. `scripts/setup-gtk3` builds

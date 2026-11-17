@@ -1,12 +1,13 @@
-# Settings for shthub. Tracked on migration/shthub; review before merging to main.
-KMONAD_DEVICE='/dev/input/by-id/usb-Kingston_HyperX_Alloy_FPS_Mechanical_Gaming_Keyboard-event-kbd'
-
-machine_display_setup() {
-    if xrandr --query | grep -q '^DisplayPort-0 connected' &&
-       xrandr --query | grep -q '^HDMI-A-0 connected'; then
-        xrandr --output DisplayPort-0 --mode 1920x1080 --rotate normal --pos 0x630 \
-            --output HDMI-A-0 --mode 1920x1080 --rotate right --pos 1920x0 --primary
-    fi
-}
-
-FIREFOX_GTK_PREFIX="$HOME/.local/opt/gtk-3.24.52"
+# Per-machine settings. Sourced by .xinitrc, install.sh, .kmonad/setup.sh and
+# the Firefox launcher. Sets nothing by default; settings come from, in order:
+#   machines/<hostname>.sh         tracked, applies only on that machine
+#   ~/.config/dotfiles/local.sh    untracked, overrides the above
+# Recognised settings: KMONAD_DEVICE, FIREFOX_GTK_PREFIX, machine_display_setup().
+_dotfiles_conf="${DOTFILES_DIR:+$DOTFILES_DIR/.config/dotfiles}"
+: "${_dotfiles_conf:=$HOME/.config/dotfiles}"
+_dotfiles_host="$(uname -n)"
+for _dotfiles_file in "$_dotfiles_conf/machines/${_dotfiles_host%%.*}.sh" "$HOME/.config/dotfiles/local.sh"; do
+    # shellcheck disable=SC1090
+    [ ! -r "$_dotfiles_file" ] || . "$_dotfiles_file"
+done
+unset _dotfiles_conf _dotfiles_host _dotfiles_file

@@ -78,7 +78,7 @@ Plain QWERTY with no home-row mods or layers: every key types what's printed on 
 ~/dotfiles/.kmonad/setup.sh
 ```
 
-Machine-specific `KMONAD_DEVICE` can be set in `~/.config/dotfiles/machine.sh`.
+Machine-specific `KMONAD_DEVICE` can be set in `~/.config/dotfiles/machines/<hostname>.sh`.
 Setup renders the template into root-owned `/etc/kmonad/dotfiles.kbd`; the service
 uses that rendered file. Rerun setup after changing the template or device.
 

@@ -1,3 +1,4 @@
 *.iso
 .claude/
 .tmux/plugins/
+.config/dotfiles/local.sh

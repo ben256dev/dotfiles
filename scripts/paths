@@ -15,6 +15,7 @@
 .config/sxhkd
 .config/picom
 .config/dotfiles/machine.sh
+.config/dotfiles/machines
 .Xresources
 .local/bin/wallpaper
 .local/share/wallpapers/nebula.jpg
