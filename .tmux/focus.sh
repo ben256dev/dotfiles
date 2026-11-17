@@ -67,9 +67,13 @@ case "$state" in
         # for every Super shortcut, even one that moves nowhere), and each
         # starts its own copy of this script. Take turns per session, then
         # apply the focus tmux has now rather than the event that started us.
+        # A closing window's session is already gone by the time its
+        # focus-out arrives: nothing to do.
+        tmux has-session -t "=$session" 2>/dev/null || exit 0
         lock="${XDG_RUNTIME_DIR:-/tmp}/tmux-focus-$(id -u)-$session.lock"
         exec 9>"$lock"
         flock 9
+        tmux has-session -t "=$session" 2>/dev/null || exit 0
         if focused "$session"; then want=in; else want=out; fi
         [ "$(tmux show -t "$session" -v @focus_state 2>/dev/null)" = "$want" ] && exit 0
         if [ "$want" = in ]; then focus_in "$session"; else focus_out "$session"; fi
