@@ -35,6 +35,7 @@ Select text with `V` first.
 
 ## Files, Buffers, and History
 
+- `:bd` — close current buffer
 - `Space b` — find an open buffer
 - `Space f` — find a file
 - `Space g` — find a Git-tracked file
