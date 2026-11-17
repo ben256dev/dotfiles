@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -Eeuo pipefail
 
 # Config-only operations never request sudo or touch packages/services.
 case "${1:-}" in
@@ -32,6 +32,9 @@ warn() { echo -e "${BRIGHT_YELLOW}!${NC} ${1}"; }
 fail() { echo -e "${RED}✗${NC} ${1}"; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"; }
 pkg_exists() { apt-cache show "$1" >/dev/null 2>&1; }
+# Write stdin to a root-owned, world-readable file. sudo keeps this script's
+# umask 077, so plain sudo tee/gpg -o would leave files apt's _apt user can't read.
+root_file() { sudo install -D -m 644 /dev/stdin "$1"; }
 
 banner() {
     echo -e "${GREEN}"
@@ -82,6 +85,9 @@ INSTALL_LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/logs"
 mkdir -p "$INSTALL_LOG_DIR"
 INSTALL_LOG="$INSTALL_LOG_DIR/install-$(date +%Y%m%d-%H%M%S)-$$.log"
 touch "$INSTALL_LOG"
+# Most output goes only to the log, so never exit silently: show why.
+trap 'echo; fail "Install failed at line $LINENO. Last lines of $INSTALL_LOG:"' ERR
+trap 'rc=$?; [ "$rc" -eq 0 ] || tail -n 15 "$INSTALL_LOG" >&2' EXIT
 
 spin_logged() {
     local title="$1"
@@ -92,18 +98,21 @@ spin_logged() {
 
 # Prompt for sudo once, then keep it fresh for the whole run.
 sudo -v
-while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done 2>/dev/null &
+(trap - ERR; while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done) 2>/dev/null &
 SUDO_KEEPALIVE_PID=$!
-trap 'kill "$SUDO_KEEPALIVE_PID" >/dev/null 2>&1 || true' EXIT
+trap 'rc=$?; kill "$SUDO_KEEPALIVE_PID" >/dev/null 2>&1 || true; [ "$rc" -eq 0 ] || tail -n 15 "$INSTALL_LOG" >&2' EXIT
 
 # Bootstrap what this script itself needs. Errors stay visible.
 echo -ne "${BLUE}::${NC} Preparing apt..."
+# Older versions of this script left keys only root could read, which makes
+# every apt update fail. Keys are public, so let apt's _apt user read them.
+[ ! -d /etc/apt/keyrings ] || sudo chmod -R a+rX /etc/apt/keyrings
 "${APT[@]}" update >> "$INSTALL_LOG" 2>&1
 "${APT[@]}" install curl git gnupg ca-certificates >> "$INSTALL_LOG" 2>&1
-sudo mkdir -p /etc/apt/keyrings
+sudo install -d -m 755 /etc/apt/keyrings
 if ! command -v gum &>/dev/null; then
-    curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor --yes -o /etc/apt/keyrings/charm.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list > /dev/null
+    curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor | root_file /etc/apt/keyrings/charm.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | root_file /etc/apt/sources.list.d/charm.list
     "${APT[@]}" update >> "$INSTALL_LOG" 2>&1
     "${APT[@]}" install gum >> "$INSTALL_LOG" 2>&1
 fi
@@ -112,6 +121,14 @@ fi
 clear
 banner
 ok "Updated package lists"
+
+# When piped from the web, fetch the repo now: everything below runs helpers
+# from it (scripts/run-logged, install-release-deb, apply, ...).
+if [ ! -f "$DOTFILES_DIR/install.sh" ]; then
+    env -u NO_COLOR gum spin --spinner.foreground=212 --spinner line --show-error --title "Cloning dotfiles" -- \
+        git clone -q -b main https://github.com/ben256dev/dotfiles.git "$DOTFILES_DIR"
+    ok "Cloned dotfiles into $DOTFILES_DIR"
+fi
 
 install_packages() {
     local pkg candidate installed
@@ -159,7 +176,7 @@ install_packages() {
         printf -v pad '%*s' "$((20 - filled))" ''
         bar=${bar// /█}
         pad=${pad// /░}
-        if [ "${PACKAGE_SOURCE:-apt}" = github ] && [ "$pkg" != diff-so-fancy ] && [ "$pkg" != aha ]; then
+        if [ "${PACKAGE_SOURCE:-apt}" = github ] && [ "$pkg" != aha ]; then
             install_command=(python3 "$DOTFILES_DIR/scripts/install-release-deb" "$pkg")
         else
             install_command=("${APT[@]}" --no-remove install "$pkg")
@@ -205,12 +222,6 @@ fi
 
 install_packages "${PACKAGES[@]}"
 
-# When piped from the web, fetch the repo so there is something to link to.
-if [ ! -f "$DOTFILES_DIR/install.sh" ]; then
-    env -u NO_COLOR gum spin --spinner.foreground=212 --spinner line --show-error --title "Cloning dotfiles" -- \
-        git clone -q -b main https://github.com/ben256dev/dotfiles.git "$DOTFILES_DIR"
-    ok "Cloned dotfiles into $DOTFILES_DIR"
-fi
 
 # Apply only after packages are installed (below).
 
@@ -219,19 +230,36 @@ fi
 DIST_CODENAME="$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-}")"
 [ -n "$DIST_CODENAME" ] || fail "Could not detect distro codename for Ghostty repo."
 GRIFFO_KEY=/etc/apt/keyrings/debian.griffo.io.gpg
-curl -fsSL https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | sudo gpg --dearmor --yes -o "$GRIFFO_KEY"
+curl -fsSL https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc | gpg --dearmor | root_file "$GRIFFO_KEY"
 # Older versions of this script trusted the key for every repo; scope it instead.
 sudo rm -f /etc/apt/trusted.gpg.d/debian.griffo.io.gpg
-echo "deb [signed-by=$GRIFFO_KEY] https://debian.griffo.io/apt ${DIST_CODENAME} main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
+echo "deb [signed-by=$GRIFFO_KEY] https://debian.griffo.io/apt ${DIST_CODENAME} main" | root_file /etc/apt/sources.list.d/debian.griffo.io.list
 spin_logged "Updating package lists" "${APT[@]}" update
 ok "Added ghostty repo"
 
 # Public GitHub assets have the same SHA256 as the signed apt index, and do
 # not require the mirror's new subscription. Keep downloads quiet and verified.
-PACKAGE_SOURCE=github install_packages fastfetch neovim zig ghostty lazygit yazi eza uv diff-so-fancy aha zoxide bun tigerbeetle
+PACKAGE_SOURCE=github install_packages fastfetch neovim zig ghostty lazygit yazi eza uv aha zoxide bun tigerbeetle
+
+# diff-so-fancy is in neither Debian 13 nor the Ghostty repo. Upstream ships it
+# as one Perl script; pin the release and its checksum.
+DSF_VERSION=1.4.14
+DSF_SHA256=98b2eb61c132f411d6005962ca14c3b5c537770bb283eef2c92dfef196f70983
+DSF_BIN=/usr/local/bin/diff-so-fancy
+if echo "$DSF_SHA256  $DSF_BIN" | sha256sum --check --quiet - >/dev/null 2>&1; then
+    ok "diff-so-fancy is already installed"
+elif spin_logged "Installing diff-so-fancy" sh -c '
+        tmp="$(mktemp)" && trap "rm -f \"\$tmp\"" EXIT &&
+        curl -fsSL -o "$tmp" "https://github.com/so-fancy/diff-so-fancy/releases/download/v$1/diff-so-fancy" &&
+        echo "$2  $tmp" | sha256sum --check --quiet - &&
+        sudo install -m 755 "$tmp" "$3"' sh "$DSF_VERSION" "$DSF_SHA256" "$DSF_BIN"; then
+    ok "Installed diff-so-fancy $DSF_VERSION"
+else
+    warn "Failed to install diff-so-fancy; continuing"
+fi
 
 # Leave only the free mirror configured for future apt updates/upgrades.
-echo "deb [signed-by=$GRIFFO_KEY] https://deb-free.griffo.io/apt ${DIST_CODENAME} main" | sudo tee /etc/apt/sources.list.d/debian.griffo.io.list > /dev/null
+echo "deb [signed-by=$GRIFFO_KEY] https://deb-free.griffo.io/apt ${DIST_CODENAME} main" | root_file /etc/apt/sources.list.d/debian.griffo.io.list
 spin_logged "Refreshing free package source" "${APT[@]}" update
 
 if command -v gdformat >/dev/null 2>&1; then
@@ -265,7 +293,7 @@ if [ "$MIGRATE" -eq 0 ] && [ -f /etc/ssh/sshd_config ]; then
     sudo chmod -x /etc/update-motd.d/* 2>/dev/null || true
     sudo truncate -s 0 /etc/motd
     sudo mkdir -p /etc/ssh/sshd_config.d
-    printf 'PrintMotd no\nPrintLastLog no\n' | sudo tee /etc/ssh/sshd_config.d/10-quiet-login.conf > /dev/null
+    printf 'PrintMotd no\nPrintLastLog no\n' | root_file /etc/ssh/sshd_config.d/10-quiet-login.conf
     if sudo sshd -t; then
         sudo systemctl restart ssh
         ok "Cleaned up SSH logins"
