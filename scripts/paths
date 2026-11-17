@@ -6,6 +6,7 @@
 .tmux.conf
 .tmux/copy.sh
 .tmux/battery.sh
+.tmux/focus.sh
 .kmonad
 .local/bin/v
 .config/nvim

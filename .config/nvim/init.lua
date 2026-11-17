@@ -22,6 +22,36 @@ local black_background = {
   SignColumn = { bg = '#000000' },
 }
 
+-- The editor's background right now: '#rrggbb', or 'NONE' when transparent.
+local function editor_bg()
+  local bg = vim.api.nvim_get_hl(0, { name = 'Normal', link = false }).bg
+  return bg and string.format('#%06x', bg) or 'NONE'
+end
+
+-- Tell tmux this pane's background, so its unfocused status bar matches the
+-- editor (.tmux/focus.sh reads @editor_bg); clear it when Neovim exits.
+if vim.env.TMUX and vim.env.TMUX_PANE then
+  local function tell_tmux(bg)
+    local args = bg and { 'tmux', 'set', '-p', '-t', vim.env.TMUX_PANE, '@editor_bg', bg == 'NONE' and 'default' or bg }
+      or { 'tmux', 'set', '-pu', '-t', vim.env.TMUX_PANE, '@editor_bg' }
+    pcall(vim.system, args)
+  end
+  local group = vim.api.nvim_create_augroup('tmux_editor_bg', { clear = true })
+  vim.api.nvim_create_autocmd({ 'VimEnter', 'ColorScheme', 'VimResume' }, {
+    group = group,
+    callback = function() tell_tmux(editor_bg()) end,
+  })
+  vim.api.nvim_create_autocmd({ 'VimLeavePre', 'VimSuspend' }, {
+    group = group,
+    callback = function()
+      -- Synchronous: Neovim may be gone before an async job runs.
+      pcall(function()
+        vim.system({ 'tmux', 'set', '-pu', '-t', vim.env.TMUX_PANE, '@editor_bg' }):wait()
+      end)
+    end,
+  })
+end
+
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
 if not vim.uv.fs_stat(lazypath) then
@@ -172,24 +202,80 @@ require('lazy').setup({
     'nvim-lualine/lualine.nvim',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     config = function()
-      require('lualine').setup({
-        options = {
-          theme = 'onedark',
-          section_separators = '',
-          component_separators = '',
-        },
-        sections = {
-          lualine_a = { 'mode' },
-          lualine_b = { 'branch', 'diff', 'diagnostics' },
-          lualine_c = { 'filename' },
-          lualine_x = { function() return 'Type Space then ? for help' end },
-          lualine_y = {},
-          lualine_z = { 'progress', 'location' },
-        },
-        tabline = {
-          lualine_a = { 'buffers' },
-          lualine_z = { 'tabs' },
-        },
+      local lualine = require('lualine')
+      local function statusline(focused)
+        -- Unfocused (the terminal lost focus, like the tmux bar): same
+        -- sections in the same places, but blue-grey text on the editor's
+        -- own background (black, light, or none with Space tt).
+        local theme = 'onedark'
+        if not focused then
+          local bg = editor_bg()
+          local quiet = {
+            a = { fg = '#aab2bf', bg = bg, gui = 'bold' },
+            b = { fg = '#aab2bf', bg = bg },
+            c = { fg = '#aab2bf', bg = bg },
+          }
+          theme = {}
+          for _, mode in ipairs({ 'normal', 'insert', 'visual', 'replace', 'command', 'terminal', 'inactive' }) do
+            theme[mode] = quiet
+          end
+        end
+        return {
+          options = {
+            theme = theme,
+            section_separators = '',
+            component_separators = '',
+          },
+          sections = {
+            lualine_a = { 'mode' },
+            lualine_b = {
+              'branch',
+              { 'diff', colored = focused },
+              { 'diagnostics', colored = focused },
+            },
+            lualine_c = { 'filename' },
+            lualine_x = { function() return 'Type Space then ? for help' end },
+            lualine_y = {},
+            lualine_z = { 'progress', 'location' },
+          },
+          tabline = {
+            lualine_a = { 'buffers' },
+            lualine_z = { 'tabs' },
+          },
+        }
+      end
+      -- Where lualine has no background, Neovim shows the bars' base colours
+      -- (One Dark's grey-blue), so give those the editor's background too
+      -- while unfocused, and put them back afterwards.
+      local bar_groups = { 'StatusLine', 'StatusLineNC', 'TabLine', 'TabLineFill', 'TabLineSel' }
+      local saved_bars
+      local function quiet_bars(focused)
+        if focused then
+          for name, hl in pairs(saved_bars or {}) do vim.api.nvim_set_hl(0, name, hl) end
+          saved_bars = nil
+        elseif not saved_bars then
+          saved_bars = {}
+          local bg = editor_bg()
+          for _, name in ipairs(bar_groups) do
+            local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+            saved_bars[name] = hl
+            vim.api.nvim_set_hl(0, name, vim.tbl_extend('force', hl, { bg = bg }))
+          end
+        end
+      end
+      lualine.setup(statusline(true))
+      vim.api.nvim_create_autocmd({ 'FocusLost', 'FocusGained' }, {
+        group = vim.api.nvim_create_augroup('lualine_focus', { clear = true }),
+        callback = function(args)
+          local focused = args.event == 'FocusGained'
+          quiet_bars(focused)
+          lualine.setup(statusline(focused))
+        end,
+      })
+      -- A new colour scheme brings its own bar colours; forget the saved ones.
+      vim.api.nvim_create_autocmd('ColorScheme', {
+        group = 'lualine_focus',
+        callback = function() saved_bars = nil end,
       })
     end,
   },
