@@ -14,3 +14,8 @@ gtk-custom-css = ~/.config/ghostty/style.css
 
 # Every terminal window starts its own tmux session; exiting tmux closes the window.
 command = tmux new-session
+
+# Let Ctrl+Tab / Ctrl+Shift+Tab reach tmux and Neovim (buffer switching)
+# instead of switching Ghostty tabs.
+keybind = ctrl+tab=unbind
+keybind = ctrl+shift+tab=unbind
