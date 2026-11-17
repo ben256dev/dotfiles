@@ -30,7 +30,10 @@ xsetroot -xcf /usr/share/icons/Adwaita/cursors/left_ptr 24
 xset s off s noblank -dpms
 
 # Window appearance
-bspc config border_width         0
+# Every window keeps a 1px border so focus changes never resize anything;
+# only the colour moves: faint white when focused, near-black otherwise.
+# The colours are set by ~/.local/bin/wallpaper with the rest of the theme.
+bspc config border_width         1
 bspc config window_gap           12
 bspc config top_padding          0
 bspc config bottom_padding       0
