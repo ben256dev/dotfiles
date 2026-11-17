@@ -65,31 +65,33 @@ case "$state" in
     in|out)
         # Focus events come in quick out/in pairs (sxhkd grabs the keyboard
         # for every Super shortcut, even one that moves nowhere), and each
-        # starts its own copy of this script. Take turns per session, then
-        # apply the focus tmux has now rather than the event that started us.
+        # starts its own copy of this script. The hooks record each event in
+        # @focus_want first, in the order tmux saw them, so the last one
+        # always wins; runs take turns per session and keep applying until
+        # nothing new came in while they worked.
         # A closing window's session is already gone by the time its
         # focus-out arrives: nothing to do.
         tmux has-session -t "=$session" 2>/dev/null || exit 0
         lock="${XDG_RUNTIME_DIR:-/tmp}/tmux-focus-$(id -u)-$session.lock"
         exec 9>"$lock"
         flock 9
-        tmux has-session -t "=$session" 2>/dev/null || exit 0
-        if focused "$session"; then want=in; else want=out; fi
-        [ "$(tmux show -t "$session" -v @focus_state 2>/dev/null)" = "$want" ] && exit 0
-        if [ "$want" = in ]; then focus_in "$session"; else focus_out "$session"; fi
-        tmux set -t "$session" @focus_state "$want"
+        while tmux has-session -t "=$session" 2>/dev/null; do
+            want=$(tmux show -t "$session" -v @focus_want 2>/dev/null)
+            [ -n "$want" ] || want=$state
+            [ "$(tmux show -t "$session" -v @focus_state 2>/dev/null)" = "$want" ] && exit 0
+            if [ "$want" = in ]; then focus_in "$session"; else focus_out "$session"; fi
+            tmux set -t "$session" @focus_state "$want"
+        done
         ;;
     sync)
         # The hooks only see focus changes; this catches terminals that were
         # already unfocused and rebuilds the copies from the current theme.
         tmux list-sessions -F '#{session_name}' | while IFS= read -r name; do
             focus_in "$name"
-            if focused "$name"; then
-                tmux set -t "$name" @focus_state in
-            else
-                focus_out "$name"
-                tmux set -t "$name" @focus_state out
-            fi
+            if focused "$name"; then want=in; else want=out; fi
+            [ "$want" = in ] || focus_out "$name"
+            tmux set -t "$name" @focus_want "$want"
+            tmux set -t "$name" @focus_state "$want"
         done
         ;;
 esac
