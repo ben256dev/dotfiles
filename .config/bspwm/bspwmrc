@@ -3,6 +3,8 @@
 # Autostart. bspwmrc reruns on `bspc wm -r`, so only start daemons that
 # aren't already running (a second sxhkd would fire every hotkey twice).
 pgrep -x sxhkd > /dev/null || sxhkd &
+# Hide the mouse cursor while typing; it comes back when the mouse moves.
+pgrep -x xbanish > /dev/null || ! command -v xbanish > /dev/null || xbanish &
 if ! pgrep -x picom >/dev/null; then
     if picom --help 2>&1 | grep -q -- '--experimental-backends'; then
         picom --experimental-backends --config "$HOME/.config/picom/picom.conf" &

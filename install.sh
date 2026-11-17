@@ -208,6 +208,7 @@ PACKAGES=(
     fd-find
     bspwm
     sxhkd
+    xbanish
     tree
     rofi
     papirus-icon-theme
