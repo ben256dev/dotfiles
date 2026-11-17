@@ -1,0 +1,12 @@
+#!/bin/sh
+# Start a tmux session named after the lowest free number (1, 2, 3, ...), so a
+# closed terminal's number is reused. Ghostty runs this for every new window.
+n=1
+while :; do
+    while tmux has-session -t "=$n" 2>/dev/null; do n=$((n + 1)); done
+    tmux new-session -s "$n" "$@" && exit 0
+    status=$?
+    # Another window took this number in the meantime: try the next one.
+    tmux has-session -t "=$n" 2>/dev/null || exit "$status"
+    n=$((n + 1))
+done

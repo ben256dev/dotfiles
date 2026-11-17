@@ -9,6 +9,7 @@
 .tmux/focus.sh
 .kmonad
 .local/bin/v
+.local/bin/tmux-session
 .config/nvim
 .config/ghostty
 .config/rofi

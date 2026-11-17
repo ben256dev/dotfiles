@@ -12,8 +12,9 @@ theme = ben256
 bold-is-bright = false
 gtk-custom-css = ~/.config/ghostty/style.css
 
-# Every terminal window starts its own tmux session; exiting tmux closes the window.
-command = tmux new-session
+# Every terminal window starts its own tmux session (named 1, 2, 3, ..., reusing
+# freed numbers); exiting tmux closes the window.
+command = exec ~/.local/bin/tmux-session
 
 # Let Ctrl+Tab / Ctrl+Shift+Tab reach tmux and Neovim (buffer switching)
 # instead of switching Ghostty tabs.
