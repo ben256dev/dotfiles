@@ -214,6 +214,7 @@ PACKAGES=(
     papirus-icon-theme
     fonts-jetbrains-mono
     git-lfs
+    build-essential
 )
 if pkg_exists firefox-esr; then
     PACKAGES+=(firefox-esr)
