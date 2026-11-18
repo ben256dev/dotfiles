@@ -30,3 +30,11 @@
 .local/bin/bluetooth
 .local/share/applications/bluetooth.desktop
 .config/networkmanager-dmenu
+.local/share/applications/debian-xterm.desktop
+.local/share/applications/debian-uxterm.desktop
+.local/share/applications/display-im7.q16.desktop
+.local/share/applications/picom.desktop
+.local/share/applications/rofi.desktop
+.local/share/applications/rofi-theme-selector.desktop
+.local/share/applications/vim.desktop
+.local/share/applications/nvim.desktop

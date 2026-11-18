@@ -8,4 +8,6 @@ configuration {
     font: "JetBrains Mono 12";
 }
 
-@theme "ben256.rasi"
+// The theme that matches the wallpaper, written by ~/.local/bin/wallpaper.
+// (rofi uses its built-in theme until that has run once.)
+@theme "~/.local/state/dotfiles/rofi.rasi"
