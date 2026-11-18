@@ -10,6 +10,8 @@ window-padding-color = background
 window-padding-balance = false
 window-decoration = false
 confirm-close-surface = false
+# No "Copied to clipboard" popup.
+app-notifications = no-clipboard-copy
 theme = ben256
 bold-is-bright = false
 gtk-custom-css = ~/.config/ghostty/style.css
