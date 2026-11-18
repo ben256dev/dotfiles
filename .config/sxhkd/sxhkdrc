@@ -70,3 +70,13 @@ super + {_,shift + }c
 # Return to the previous window.
 super + grave
     bspc node -f last
+
+# Volume keys. Raising stops at 100%.
+XF86AudioRaiseVolume
+    wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+
+XF86AudioLowerVolume
+    wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+XF86AudioMute
+    wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+XF86AudioMicMute
+    wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle

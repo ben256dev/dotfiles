@@ -221,6 +221,9 @@ PACKAGES=(
     bluez
     rfkill
     bc
+    # Sound. Also what Bluetooth earbuds connect to: without it bluez refuses
+    # them (br-connection-profile-unavailable).
+    pipewire-audio
 )
 if pkg_exists firefox-esr; then
     PACKAGES+=(firefox-esr)
