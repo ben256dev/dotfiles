@@ -234,7 +234,7 @@ require('lazy').setup({
               { 'diagnostics', colored = focused },
             },
             lualine_c = { 'filename' },
-            lualine_x = { function() return 'Type Space then ? for help' end },
+            lualine_x = { function() return '󰌌 Space + ?' end },
             lualine_y = {},
             lualine_z = { 'progress', 'location' },
           },
