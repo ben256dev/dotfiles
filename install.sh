@@ -373,6 +373,13 @@ ok "Linked dotfiles"
 if [ -n "${FIREFOX_GTK_PREFIX:-}" ]; then
     python3 "$DOTFILES_DIR/scripts/firefox-launcher"
 fi
+# Firefox prefs (firefox/dotfiles.js) as system-wide defaults.
+for firefox_prefs in /etc/firefox-esr /etc/firefox; do
+    if [ -d "$firefox_prefs" ]; then
+        root_file "$firefox_prefs/dotfiles.js" < "$DOTFILES_DIR/firefox/dotfiles.js"
+        ok "Set Firefox prefs in $firefox_prefs"
+    fi
+done
 
 # Keyboard remapping (Colemak-DH) as a boot-time service. Last, so the layout
 # only changes once everything else is done.
