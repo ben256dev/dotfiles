@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Wi-Fi
+Exec=sh -c "exec ~/.local/bin/wifi"
+Icon=network-wireless
+Categories=Settings;Network;
+Terminal=false

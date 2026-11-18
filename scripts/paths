@@ -25,3 +25,8 @@
 .local/bin/launcher
 .local/bin/firefox
 .config/gtk-3.0/gtk.css
+.local/bin/wifi
+.local/share/applications/wifi.desktop
+.local/bin/bluetooth
+.local/share/applications/bluetooth.desktop
+.config/networkmanager-dmenu

@@ -216,6 +216,11 @@ PACKAGES=(
     git-lfs
     build-essential
     network-manager
+    python3-gi
+    gir1.2-nm-1.0
+    bluez
+    rfkill
+    bc
 )
 if pkg_exists firefox-esr; then
     PACKAGES+=(firefox-esr)
@@ -260,6 +265,30 @@ elif spin_logged "Installing diff-so-fancy" sh -c '
 else
     warn "Failed to install diff-so-fancy; continuing"
 fi
+
+# The Wi-Fi and Bluetooth menus (~/.local/bin/wifi, bluetooth) are other
+# people's rofi tools, in neither Debian nor the Ghostty repo. Each is one
+# script; pin it (rofi-bluetooth has no releases, so a commit) and its checksum.
+install_pinned_script() { # NAME URL SHA256
+    bin="/usr/local/bin/$1"
+    if echo "$3  $bin" | sha256sum --check --quiet - >/dev/null 2>&1; then
+        ok "$1 is already installed"
+    elif spin_logged "Installing $1" sh -c '
+            tmp="$(mktemp)" && trap "rm -f \"\$tmp\"" EXIT &&
+            curl -fsSL -o "$tmp" "$1" &&
+            echo "$2  $tmp" | sha256sum --check --quiet - &&
+            sudo install -m 755 "$tmp" "$3"' sh "$2" "$3" "$bin"; then
+        ok "Installed $1"
+    else
+        warn "Failed to install $1; continuing"
+    fi
+}
+install_pinned_script networkmanager_dmenu \
+    https://raw.githubusercontent.com/firecat53/networkmanager-dmenu/v2.7.2/networkmanager_dmenu \
+    12d1daa90677b7e3054ac36fb39def51d2a7b7efe64b58d8cf1a4d2c81e259b5
+install_pinned_script rofi-bluetooth \
+    https://raw.githubusercontent.com/nickclyde/rofi-bluetooth/0cca4d4aa1c82c9373ce5da781d73683a29484c6/rofi-bluetooth \
+    28abbc9ca5209dcfc899266c882fe5897683f912c9a77ec613e3e6fe01215d87
 
 # Leave only the free mirror configured for future apt updates/upgrades.
 echo "deb [signed-by=$GRIFFO_KEY] https://deb-free.griffo.io/apt ${DIST_CODENAME} main" | root_file /etc/apt/sources.list.d/debian.griffo.io.list

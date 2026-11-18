@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Bluetooth
+Exec=sh -c "exec ~/.local/bin/bluetooth"
+Icon=bluetooth
+Categories=Settings;
+Terminal=false

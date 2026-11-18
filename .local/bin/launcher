@@ -1,7 +1,15 @@
 #!/bin/sh
+# rofi with the theme that matches the current wallpaper.
+#   launcher ARGS...   run rofi with ARGS
+#   launcher --args    print just the theme arguments, for tools that run rofi
+#                      themselves (wifi, bluetooth)
 state="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/wallpaper"
 case "$(cat "$state" 2>/dev/null)" in
     nebula) theme=nebula.rasi ;;
     *) theme=ben256.rasi ;;
 esac
+if [ "${1:-}" = --args ]; then
+    printf '%s\n' -monitor -4 -theme "$HOME/.config/rofi/$theme"
+    exit 0
+fi
 exec rofi -monitor -4 -theme "$HOME/.config/rofi/$theme" "$@"
