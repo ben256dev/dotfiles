@@ -215,6 +215,7 @@ PACKAGES=(
     fonts-jetbrains-mono
     git-lfs
     build-essential
+    network-manager
 )
 if pkg_exists firefox-esr; then
     PACKAGES+=(firefox-esr)
@@ -302,6 +303,25 @@ if [ "$MIGRATE" -eq 0 ] && [ -f /etc/ssh/sshd_config ]; then
     else
         warn "sshd config test failed; not restarting ssh"
     fi
+fi
+
+# The Debian installer can leave Wi-Fi in /etc/network/interfaces, where
+# NetworkManager refuses to touch it. Copy that network into NetworkManager and
+# empty the file; NetworkManager takes over Wi-Fi after the next reboot.
+if [ "$MIGRATE" -eq 0 ] && command -v nmcli >/dev/null 2>&1 &&
+    sudo grep -q '^[[:space:]]*wpa-ssid' /etc/network/interfaces 2>/dev/null; then
+    wifi_ssid=$(sudo sed -n 's/^[[:space:]]*wpa-ssid[[:space:]]\{1,\}//p' /etc/network/interfaces | head -n 1)
+    wifi_psk=$(sudo sed -n 's/^[[:space:]]*wpa-psk[[:space:]]\{1,\}//p' /etc/network/interfaces | head -n 1)
+    if nmcli connection show id "$wifi_ssid" >/dev/null 2>&1 ||
+        sudo nmcli connection add type wifi con-name "$wifi_ssid" ssid "$wifi_ssid" \
+            ${wifi_psk:+wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$wifi_psk"} >> "$INSTALL_LOG" 2>&1; then
+        sudo cp -a /etc/network/interfaces /etc/network/interfaces.before-networkmanager
+        printf 'auto lo\niface lo inet loopback\n' | root_file /etc/network/interfaces
+        ok "Moved Wi-Fi to NetworkManager (reboot to finish)"
+    else
+        warn "Could not copy Wi-Fi to NetworkManager; leaving /etc/network/interfaces alone"
+    fi
+    unset wifi_ssid wifi_psk
 fi
 
 if [ -r "$DOTFILES_DIR/.config/dotfiles/machine.sh" ]; then
