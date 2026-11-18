@@ -87,9 +87,11 @@ The selection persists across sessions.
 
 ### Window shortcuts
 
-- Super+Return: new Ghostty terminal; Super+Space: rofi launcher.
-- Alt+1 / Alt+2: focus the last used Ghostty / Firefox window, or launch one.
-- Super+Tab: toggle tiled/monocle; Super+C / Super+Shift+C: cycle windows.
+- Super+T / Super+F (or Alt+1 / Alt+2): go to the last used Ghostty / Firefox
+  window, or open one if there isn't one; add Shift to always open a new one.
+  Super+A or Super+O: rofi launcher.
+- Super+Return or Super+Tab: toggle fullscreen (monocle); Super+S: toggle floating.
+- Super+C / Super+Shift+C: cycle windows.
 - Super+backtick: previous window; Super+1 through Super+0: desktops 1–10.
 - Super+M/N/E/I: focus left/down/up/right (Colemak-DH); add Shift to move.
 

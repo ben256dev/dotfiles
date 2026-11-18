@@ -1,30 +1,42 @@
-# Terminal
-super + Return
-	ghostty
-
 # App launcher
-super + space
+super + {a, o}
 	"$HOME/.local/bin/launcher" -show drun
 
 # Reload sxhkd
-super + Escape
+super + r
 	pkill -USR1 -x sxhkd
 
 # Close / kill window
-super + {_,shift + }w
+super + {_,shift + }Escape
 	bspc node -{c,k}
 
-# Alternate between tiled and monocle layout
-super + Tab
+# Alternate between tiled and monocle layout: monocle shows just the focused
+# window, filling the screen (no gaps, borders or bar), so Super+Return works
+# like Alt+Enter on Windows. Unlike bspwm's fullscreen state, switching
+# windows (Super+T/F) still brings the other window to the front.
+super + {Tab,Return}
 	bspc desktop -l next
 
 # Swap current node with the biggest window
 super + g
 	bspc node -s biggest.window
 
-# Set window state
-super + {t,shift + t,s,f}
-	bspc node -t {tiled,pseudo_tiled,floating,fullscreen}
+# Super+S floats a window and Super+S again tiles it.
+super + s
+	bspc node -t ~floating
+
+# Go to the terminal / Firefox, or open it if there isn't one. With Shift,
+# always open a new one.
+# (One binding each: sxhkd's {a,b} pairing across two groups is easy to get
+# backwards.)
+super + t
+    python3 "$HOME/.config/sxhkd/scripts/focus-app" terminal
+super + f
+    python3 "$HOME/.config/sxhkd/scripts/focus-app" browser
+super + shift + t
+    python3 "$HOME/.config/sxhkd/scripts/focus-app" terminal new
+super + shift + f
+    python3 "$HOME/.config/sxhkd/scripts/focus-app" browser new
 
 # Focus / move window in direction: m/n/e/i = left/down/up/right, the same
 # keys as tmux panes and nvim windows
