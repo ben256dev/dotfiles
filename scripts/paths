@@ -38,3 +38,4 @@
 .local/share/applications/rofi-theme-selector.desktop
 .local/share/applications/vim.desktop
 .local/share/applications/nvim.desktop
+.tmux/cheatsheet.sh

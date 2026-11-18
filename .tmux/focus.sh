@@ -75,7 +75,9 @@ left=$(tmux show -gv status-left)
 tmux set -g @focused_status-left "$left"
 tmux set -g @unfocused_status-left "$(printf '%s' "$left" | grey | sed "s/fg=$bar_bg/fg=$bar_fg/" | text_only)"
 
-tmux set -g @focused_status-right "$(tmux show -gv status-right)"
+# The focused bar starts its right side with the cheatsheet hint
+# (@cheatsheet_hint, set in .tmux.conf), in the theme's text colour.
+tmux set -g @focused_status-right "#[fg=$bar_fg,bg=$bar_bg]#{@cheatsheet_hint}   $(tmux show -gv status-right)"
 tmux set -g @unfocused_status-right ''
 
 for opt in window-status-format window-status-current-format; do
