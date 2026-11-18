@@ -2,10 +2,42 @@
 # Unfocused terminals get a quieter status bar: just the session number and
 # tabs as blue-grey text on the terminal's background (or Neovim's, when it's
 # open in the active pane), no right side.
-#   focus.sh in|out SESSION  from the client-focus-in/out hooks in .tmux.conf
-#   focus.sh sync            after the theme loads: match every session to
-#                            whether its terminal has focus right now
-state=$1 session=$2
+#
+#   focus.sh        after the theme loads: give every status option a focused
+#                   and an unfocused version, chosen by the session's
+#                   @wm_focused
+#   focus.sh sync   mark the session in the focused window (if any) focused
+#                   and every other one unfocused, and redraw what changed
+#
+# Focus comes from bspwm, not from tmux's own focus events: those arrive via
+# Ghostty and often lag by seconds, while bspwm knows at once. bspwmrc runs
+# `focus.sh sync` on every focus change; tmux's focus hooks run it too, as a
+# backup. Each Ghostty window is titled with its session's id (set-titles in
+# .tmux.conf), which is how a window maps to a session.
+
+if [ "${1:-}" = sync ]; then
+    window=$(bspc query -N -n focused.window 2>/dev/null)
+    title=${window:+$(xprop -id "$window" _NET_WM_NAME 2>/dev/null)}
+    # _NET_WM_NAME(UTF8_STRING) = "tmux $3"  ->  $3
+    focused_session=$(printf '%s' "$title" | sed -n 's/.*= "tmux \(\$[0-9]*\)"$/\1/p')
+    tmux list-sessions -F '#{session_id} #{@wm_focused}' | while read -r session state; do
+        want=0; [ "$session" = "$focused_session" ] && want=1
+        [ "$state" = "$want" ] && continue
+        # A user option change doesn't redraw by itself.
+        tmux set -t "$session" @wm_focused "$want"
+        tmux list-clients -t "$session" -F '#{client_name}' |
+            while IFS= read -r client; do tmux refresh-client -S -t "$client"; done
+    done
+    exit 0
+fi
+
+# The two versions are kept in @focused_* / @unfocused_* options, and each
+# status option picks one.
+focused='#{==:#{@wm_focused},1}'
+
+# A reload reruns the theme, which overwrites the options again; without a
+# reload they already point at the copies, so leave them.
+case "$(tmux show -gv status-left)" in *@focused_*) exit 0 ;; esac
 
 grey() {
     # One Dark's own blue-greys (#282c34, #3e4452, #aab2bf) stay as they are;
@@ -20,8 +52,9 @@ grey() {
     }gie'
 }
 
-# The theme's bar colour, before any session overrides it.
-bar=$(tmux show -gv status-bg)
+# Behind the quiet bar: Neovim's background when it's open in the active pane
+# (it sets @editor_bg), otherwise the terminal's own.
+bg='#{?@editor_bg,#{@editor_bg},default}'
 
 # Text only: every background becomes the terminal's, and the solid powerline
 # arrows (which only draw block edges) become spaces, so the text sits in the
@@ -30,90 +63,45 @@ text_only() {
     perl -pe "s/bg=#[0-9a-f]{6}/bg=$bg/gi; s/\xee\x82[\xb0\xb2]/ /g"
 }
 
-# Each tmux command redraws the status bar, so a change made one command at a
-# time shows its half-done states: with status-bg cleared but status-style not
-# yet set, tmux's default green bar flashes up. Queue the commands with "cmd"
-# and send them all in one tmux call ("apply") so the bar changes at once.
-cmd() {
-    for arg; do queue="$queue$arg
-"; done
-    queue="$queue;
-"
-}
-apply() {
-    [ -n "$queue" ] || return 0
-    printf '%s' "$queue" | {
-        set --
-        while IFS= read -r line; do set -- "$@" "$line"; done
-        tmux "$@"
-    }
-    queue=
-}
+# The theme colours the bar with status-bg/status-fg, which win over
+# status-style; move them into status-style so it can choose.
+bar_bg=$(tmux show -gv status-bg) bar_fg=$(tmux show -gv status-fg)
+tmux set -g @focused_status-style "bg=$bar_bg,fg=$bar_fg"
+tmux set -g @unfocused_status-style "bg=$bg,fg=$(printf '%s' "$bar_fg" | grey)"
 
-focus_out() {
-    windows=$(tmux list-windows -t "$1" -F '#{window_id}') || return 0
-    # Match Neovim's background when it's open in the active pane (it sets
-    # @editor_bg); otherwise the terminal's own.
-    bg=$(tmux display -p -t "$1" '#{@editor_bg}')
-    bg=${bg:-default}
-    # The session badge's dark text would vanish on the terminal background,
-    # so it takes the bar's text colour.
-    cmd set -t "$1" status-left "$(tmux show -gv status-left | grey | sed "s/fg=$bar/fg=$(tmux show -gv status-fg)/" | text_only)"
-    cmd set -t "$1" status-right ''
-    # status-bg wins over status-style, so set both.
-    cmd set -t "$1" status-style "bg=$bg,fg=$(tmux show -gv status-fg | grey)"
-    cmd set -t "$1" status-bg "$bg"
-    for opt in window-status-format window-status-current-format; do
-        value=$(tmux show -gwv "$opt" | grey | text_only)
-        for window in $windows; do cmd set -w -t "$window" "$opt" "$value"; done
+# The session badge's dark text would vanish on the terminal background, so
+# it takes the bar's text colour.
+left=$(tmux show -gv status-left)
+tmux set -g @focused_status-left "$left"
+tmux set -g @unfocused_status-left "$(printf '%s' "$left" | grey | sed "s/fg=$bar_bg/fg=$bar_fg/" | text_only)"
+
+tmux set -g @focused_status-right "$(tmux show -gv status-right)"
+tmux set -g @unfocused_status-right ''
+
+for opt in window-status-format window-status-current-format; do
+    value=$(tmux show -gwv "$opt")
+    tmux set -g "@focused_$opt" "$value"
+    tmux set -g "@unfocused_$opt" "$(printf '%s' "$value" | grey | text_only)"
+done
+
+# Switch over in one tmux call, so the bar never shows a half-done mix (with
+# status-bg cleared but status-style not yet set, tmux's default green bar
+# would flash up).
+pick() { printf '#{?%s,#{E:@focused_%s},#{E:@unfocused_%s}}' "$focused" "$1" "$1"; }
+tmux set -g status-bg default \; set -g status-fg default \; \
+    set -g status-style "$(pick status-style)" \; \
+    set -g status-left "$(pick status-left)" \; \
+    set -g status-right "$(pick status-right)" \; \
+    set -gw window-status-format "$(pick window-status-format)" \; \
+    set -gw window-status-current-format "$(pick window-status-current-format)"
+
+# The script this replaced gave unfocused sessions their own copies of these
+# options, which would hide the global ones; clear any that are left.
+tmux list-sessions -F '#{session_name}' | while IFS= read -r session; do
+    for opt in status-left status-right status-bg status-style @focus_state; do
+        tmux set -u -t "$session" "$opt"
     done
-    apply
-}
-
-focus_in() {
-    windows=$(tmux list-windows -t "$1" -F '#{window_id}') || return 0
-    for opt in status-left status-right status-bg status-style; do cmd set -u -t "$1" "$opt"; done
-    for opt in window-status-format window-status-current-format; do
-        for window in $windows; do cmd set -wu -t "$window" "$opt"; done
+    tmux list-windows -t "$session" -F '#{window_id}' | while IFS= read -r window; do
+        tmux set -wu -t "$window" window-status-format \; set -wu -t "$window" window-status-current-format
     done
-    apply
-}
-
-focused() {
-    tmux list-clients -t "$1" -F '#{client_flags}' | grep -q focused
-}
-
-case "$state" in
-    in|out)
-        # Focus events come in quick out/in pairs (sxhkd grabs the keyboard
-        # for every Super shortcut, even one that moves nowhere), and each
-        # starts its own copy of this script. The hooks record each event in
-        # @focus_want first, in the order tmux saw them, so the last one
-        # always wins; runs take turns per session and keep applying until
-        # nothing new came in while they worked.
-        # A closing window's session is already gone by the time its
-        # focus-out arrives: nothing to do.
-        tmux has-session -t "=$session" 2>/dev/null || exit 0
-        lock="${XDG_RUNTIME_DIR:-/tmp}/tmux-focus-$(id -u)-$session.lock"
-        exec 9>"$lock"
-        flock 9
-        while tmux has-session -t "=$session" 2>/dev/null; do
-            want=$(tmux show -t "$session" -v @focus_want 2>/dev/null)
-            [ -n "$want" ] || want=$state
-            [ "$(tmux show -t "$session" -v @focus_state 2>/dev/null)" = "$want" ] && exit 0
-            if [ "$want" = in ]; then focus_in "$session"; else focus_out "$session"; fi
-            tmux set -t "$session" @focus_state "$want"
-        done
-        ;;
-    sync)
-        # The hooks only see focus changes; this catches terminals that were
-        # already unfocused and rebuilds the copies from the current theme.
-        tmux list-sessions -F '#{session_name}' | while IFS= read -r name; do
-            focus_in "$name"
-            if focused "$name"; then want=in; else want=out; fi
-            [ "$want" = in ] || focus_out "$name"
-            tmux set -t "$name" @focus_want "$want"
-            tmux set -t "$name" @focus_state "$want"
-        done
-        ;;
-esac
+done

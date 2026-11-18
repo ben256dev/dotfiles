@@ -30,6 +30,15 @@ done
 [ ! -f "$HOME/.Xresources" ] || xrdb -merge "$HOME/.Xresources"
 xsetroot -xcf /usr/share/icons/Adwaita/cursors/left_ptr 24
 
+# Tell tmux which terminal has focus, for its quiet unfocused status bar
+# (.tmux/focus.sh). The pidfile lets a rerun of bspwmrc replace the listener.
+focus_pid="${XDG_RUNTIME_DIR:-/tmp}/tmux-focus-$(id -u).pid"
+[ ! -f "$focus_pid" ] || kill "$(cat "$focus_pid")" 2>/dev/null
+bspc subscribe node_focus | while read -r _; do
+    sh "$HOME/.tmux/focus.sh" sync
+done &
+echo $! > "$focus_pid"
+
 # Monitors stay on until the machine is put to sleep on purpose: no screen
 # saver, no blanking, no DPMS power-off timer. Here rather than only in
 # .xinitrc so it also applies under display managers and on `bspc wm -r`.
