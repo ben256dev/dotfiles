@@ -5,6 +5,10 @@
 pgrep -x sxhkd > /dev/null || sxhkd &
 # Hide the mouse cursor while typing; it comes back when the mouse moves.
 pgrep -x xbanish > /dev/null || ! command -v xbanish > /dev/null || xbanish &
+# Keep the clipboard when the program it was copied from closes. On X11 that
+# program holds the contents; autocutsel takes a copy whenever it changes.
+pgrep -x autocutsel > /dev/null || ! command -v autocutsel > /dev/null ||
+    autocutsel -selection CLIPBOARD -fork
 if ! pgrep -x picom >/dev/null; then
     if picom --help 2>&1 | grep -q -- '--experimental-backends'; then
         picom --experimental-backends --config "$HOME/.config/picom/picom.conf" &

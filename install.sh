@@ -209,6 +209,7 @@ PACKAGES=(
     bspwm
     sxhkd
     xbanish
+    autocutsel
     tree
     rofi
     papirus-icon-theme
