@@ -92,6 +92,7 @@ The selection persists across sessions.
   Super+A or Super+O: rofi launcher.
 - Super+Return or Super+Tab: toggle fullscreen (monocle); Super+S: toggle floating.
 - Super+C / Super+Shift+C: cycle windows.
+- Super+H: edit these shortcuts (sxhkdrc) in Neovim; Super+R reloads them.
 - Super+backtick: previous window; Super+1 through Super+0: desktops 1–10.
 - Super+M/N/E/I: focus left/down/up/right (Colemak-DH); add Shift to move.
 

@@ -2,6 +2,11 @@
 super + {a, o}
 	"$HOME/.local/bin/launcher" -show drun
 
+# Edit this file in a new terminal; quitting Neovim closes it. Super+R then
+# loads the changes.
+super + h
+	ghostty -e "$HOME/.local/bin/tmux-session" nvim "$HOME/.config/sxhkd/sxhkdrc"
+
 # Reload sxhkd
 super + r
 	pkill -USR1 -x sxhkd
