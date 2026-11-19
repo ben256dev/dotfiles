@@ -6,7 +6,7 @@
 # The order to list keys in: tabs, splits and panes, then the rest. tmux
 # lists bindings by key, so this puts related ones together. A key missing
 # here still shows, at the end.
-order='c 1 s v m z x y h'
+order='c r 1 s v m z x y h'
 
 list() {
     tmux list-keys -N -T root | awk -v order="$order" '

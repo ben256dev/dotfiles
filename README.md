@@ -101,7 +101,7 @@ Right Alt+Left Win toggles plain QWERTY.
 
 No prefix needed: hold R or I (kmonad's home-row Alt) and press
 
-- C: new tab; 1–9: go to tab 1–9
+- C: new tab; R: rename it; 1–9: go to tab 1–9
 - S / V: split below / to the right; M/N/E/I: move between panes
 - Z: zoom the pane; X: close it; Y: copy mode
 - H: show this list in a popup
