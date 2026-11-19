@@ -107,6 +107,15 @@ echo -ne "${BLUE}::${NC} Preparing apt..."
 # Older versions of this script left keys only root could read, which makes
 # every apt update fail. Keys are public, so let apt's _apt user read them.
 [ ! -d /etc/apt/keyrings ] || sudo chmod -R a+rX /etc/apt/keyrings
+# tmux comes from Debian's backports: before 3.6, tmux re-encoded newlines in
+# pasted text as Ctrl+J keypresses (\e[27;5;106~) whenever extended keys were
+# on, which .tmux.conf needs for Ctrl+Tab in Neovim. The pin takes only tmux
+# from backports; everything else stays on the release.
+backports="$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-}")-backports"
+if [ "$backports" != -backports ]; then
+    echo "deb http://deb.debian.org/debian $backports main" | root_file /etc/apt/sources.list.d/backports.list
+    printf 'Package: tmux\nPin: release n=%s\nPin-Priority: 500\n' "$backports" | root_file /etc/apt/preferences.d/tmux-backports
+fi
 "${APT[@]}" update >> "$INSTALL_LOG" 2>&1
 "${APT[@]}" install curl git gnupg ca-certificates >> "$INSTALL_LOG" 2>&1
 sudo install -d -m 755 /etc/apt/keyrings
@@ -233,6 +242,17 @@ else
 fi
 
 install_packages "${PACKAGES[@]}"
+# install_packages leaves installed packages alone; move an older tmux up to
+# the backports one (see the pin above).
+tmux_installed=$(dpkg-query -W -f='${Version}' tmux 2>/dev/null || true)
+tmux_candidate=$(apt-cache policy tmux | sed -n 's/^  Candidate: //p')
+if [ -n "$tmux_installed" ] && dpkg --compare-versions "$tmux_installed" lt "$tmux_candidate"; then
+    if spin_logged "Upgrading tmux to $tmux_candidate" "${APT[@]}" --no-remove install tmux; then
+        ok "Upgraded tmux to $tmux_candidate (open new terminals to use it)"
+    else
+        warn "Failed to upgrade tmux; continuing"
+    fi
+fi
 
 
 # Apply only after packages are installed (below).
