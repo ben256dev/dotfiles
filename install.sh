@@ -218,7 +218,7 @@ PACKAGES=(
     bspwm
     sxhkd
     xbanish
-    autocutsel
+    xfce4-clipman
     tree
     rofi
     papirus-icon-theme
