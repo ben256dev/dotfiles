@@ -231,6 +231,8 @@ PACKAGES=(
     bluez
     rfkill
     bc
+    # Battery level for tmux's status bar (.tmux/battery.sh).
+    upower
     # Sound. Also what Bluetooth earbuds connect to: without it bluez refuses
     # them (br-connection-profile-unavailable).
     pipewire-audio

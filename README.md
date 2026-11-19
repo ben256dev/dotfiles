@@ -107,5 +107,8 @@ No prefix needed: hold R or I (kmonad's home-row Alt) and press
 - Z: zoom the pane; X: close it; Y: copy mode
 - H: show this list in a popup
 
+The status bar's right side shows the battery (via upower); it turns red at
+20% and below while not charging.
+
 The Ctrl+S prefix bindings still work. With kmonad, the physical Alt keys
 select the number layer, so for Alt+number hold R or I and use the number row.
