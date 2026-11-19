@@ -1,7 +1,6 @@
 #!/bin/sh
 # Battery for tmux's status bar (@onedark_widgets in .tmux.conf), read from
-# upower. Prints nothing on machines without a battery. Turns red at 20% and
-# below unless it's charging, so it's hard to miss.
+# upower. Prints nothing on machines without a battery.
 
 dev=$(upower -e 2>/dev/null | grep -m1 battery_) || exit 0
 info=$(upower -i "$dev")
@@ -24,9 +23,17 @@ case $state in
         elif [ "$pct" -le 95 ]; then icon="󰂂"
         else                         icon="󰁹"
         fi
-        # One Dark's red; the theme's next segment sets its own colours.
-        [ "$pct" -le 20 ] && printf '#[fg=#e06c75,bold]'
         ;;
 esac
 
-printf '%s %s%%\n' "$icon" "$pct"
+# Low and not charging: at 20% and below the text turns One Dark's red; at
+# 10% and below it becomes a blinking red badge. Each ends by restoring the
+# theme's widget colours, since the theme's next segment doesn't clear blink.
+reset='#[fg=#aab2bf,bg=#3e4452,nobold,noblink]'
+if [ "$icon" != "󰂄" ] && [ "$pct" -le 10 ]; then
+    printf '#[fg=#282c34,bg=#e06c75,bold,blink] %s %s%% %s\n' "$icon" "$pct" "$reset"
+elif [ "$icon" != "󰂄" ] && [ "$pct" -le 20 ]; then
+    printf '#[fg=#e06c75,bold]%s %s%%%s\n' "$icon" "$pct" "$reset"
+else
+    printf '%s %s%%\n' "$icon" "$pct"
+fi
