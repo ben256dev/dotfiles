@@ -38,4 +38,6 @@
 .local/share/applications/rofi-theme-selector.desktop
 .local/share/applications/vim.desktop
 .local/share/applications/nvim.desktop
+.local/share/applications/xfce4-clipman.desktop
+.local/share/applications/xfce4-clipman-settings.desktop
 .tmux/cheatsheet.sh
