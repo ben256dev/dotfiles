@@ -7,7 +7,8 @@
 .tmux/copy.sh
 .tmux/battery.sh
 .tmux/focus.sh
-.tmux/textobj.sh
+.tmux/vim.sh
+.tmux/vim.lua
 .kmonad
 .local/bin/v
 .local/bin/tmux-session
