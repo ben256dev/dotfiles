@@ -48,7 +48,8 @@ rows=$(printf '%s\n' "$lines" | wc -l)
 cols=$(printf '%s\n' "$lines" | LC_ALL=C sed 's/[\x80-\xbf]//g' |
     awk '{ if (length > w) w = length } END { print w }')
 # Plus a space of padding on the right (the left one is in the list) and the
-# border. tmux centres the title over that width.
+# border. tmux centres the title over that width. The popup hides its
+# cursor (\033[?25l) first: it would sit at the end of the last note.
 tmux display-popup -c "$1" -T '#[align=centre] tmux cheatsheet ' \
     -w $((cols + 3)) -h $((rows + 2)) \
-    -E "sh ~/.tmux/cheatsheet.sh --print; bash -c 'read -rsn1'"
+    -E "printf '\\033[?25l'; sh ~/.tmux/cheatsheet.sh --print; bash -c 'read -rsn1'"
