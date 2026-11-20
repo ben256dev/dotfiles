@@ -107,6 +107,10 @@ No prefix needed: hold R or I (kmonad's home-row Alt) and press
 - Z: zoom the pane; X: close it; Y: copy mode
 - H: show this list in a popup
 
+In copy mode, select lines (V) and press P to pin them at the top of a new
+tab with `v` below them, say an error message while you fix the file. Q in
+the pinned pane unpins them; quitting `v` closes the tab.
+
 The status bar's right side shows the battery (via upower). While not
 charging it turns red at 20% and below, and becomes a flashing red badge at
 10% and below.

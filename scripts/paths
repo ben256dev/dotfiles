@@ -41,3 +41,4 @@
 .local/share/applications/xfce4-clipman.desktop
 .local/share/applications/xfce4-clipman-settings.desktop
 .tmux/cheatsheet.sh
+.tmux/pin-v.sh
