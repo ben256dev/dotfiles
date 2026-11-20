@@ -39,7 +39,6 @@ select_pinned_lines() {
 
   buffer_before="$(tmux list-buffers -F '#{buffer_name}' 2>/dev/null | head -n 1)"
   tmux copy-mode -t "$pane"
-  tmux display-message -t "$pane" 'v: select lines, then y pins them (Escape cancels)'
 
   while :; do
     state="$(tmux display -p -t "$pane" \
@@ -67,6 +66,19 @@ select_pinned_lines() {
   tmux capture-pane -p -e -J -t "$pane" -S "$((start - history))" -E "$((end - history))" |
     sed 's/$/\x1b[0m/' > "$pin_dir/lines"
 
+  # Neovim's terminal buffers draw the 16 basic ANSI colours (and plain
+  # text) in the colour scheme's palette; give the pinned lines Ghostty's
+  # instead, so they look as they did in the terminal. show-config leaves
+  # out what matches Ghostty's defaults, so those fill the gaps. Without
+  # Ghostty (over SSH, say) the pinned lines keep the colour scheme's.
+  if command -v ghostty >/dev/null 2>&1; then
+    { ghostty +show-config; ghostty +show-config --default; } 2>/dev/null | awk '
+      /^palette = ([0-9]|1[0-5])=#/ { split($3, p, "="); key = p[1]; value = p[2] }
+      /^foreground = #/ { key = "fg"; value = $3 }
+      key != "" && !(key in seen) { seen[key]; print key, value }
+      { key = "" }' > "$pin_dir/colors"
+  fi
+
   # Neovim shows them in a terminal buffer with no program behind it
   # (nvim_open_term), which draws the colour codes like the terminal did.
   cat > "$pin_dir/pin.lua" <<'EOF'
@@ -78,6 +90,18 @@ local win = vim.api.nvim_get_current_win()
 vim.api.nvim_win_set_buf(win, buf)
 for option, value in pairs({ number = false, relativenumber = false, signcolumn = 'no', winfixheight = true }) do
   vim.wo[win][option] = value
+end
+-- The terminal's palette, if v found it: buffer-local terminal colours,
+-- read when the terminal opens, and its plain text colour.
+local ok, colors = pcall(vim.fn.readfile, vim.env.V_PIN_DIR .. '/colors')
+for _, line in ipairs(ok and colors or {}) do
+  local key, value = line:match('^(%w+) (#%x+)$')
+  if key == 'fg' then
+    vim.api.nvim_set_hl(0, 'VPinnedNormal', { fg = value })
+    vim.wo[win].winhighlight = 'Normal:VPinnedNormal'
+  elseif key then
+    vim.b[buf]['terminal_color_' .. key] = value
+  end
 end
 local chan = vim.api.nvim_open_term(buf, {})
 vim.api.nvim_chan_send(chan, table.concat(lines, '\r\n'))
