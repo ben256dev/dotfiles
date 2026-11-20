@@ -6,7 +6,7 @@
 # The order to list keys in: tabs, splits and panes, then the rest. tmux
 # lists bindings by key, so this puts related ones together. A key missing
 # here still shows, at the end.
-order='c r 1 s v m z x y ?'
+order='c r 1 h v m z x y ?'
 
 list() {
     # Newer tmux (3.7 from backports) starts each line with the prefix key
