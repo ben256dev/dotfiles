@@ -12,7 +12,7 @@ diff_index_path="$diff_cache_dir/index.tsv"
 diff_cache_keep=200
 
 # Temporary directories: the file snapshots (open_files) and the pinned
-# lines (v -v). Removed however v exits.
+# lines (v !). Removed however v exits.
 snapshot_dir=""
 pin_dir=""
 cleanup() {
@@ -21,7 +21,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# v -v: select lines from the terminal with tmux's copy mode, to pin them in
+# v ! (or -v): select lines from the terminal with tmux's copy mode, to pin them in
 # a split above the file. The lines are captured from the pane with their
 # colours (capture-pane -e); the selection only says which whole lines.
 #
@@ -61,14 +61,13 @@ select_pinned_lines() {
 
   pin_dir="$(mktemp -d)"
   # capture-pane counts the visible screen from 0 and the scrollback above
-  # it in negatives. -J joins wrapped lines. Each line ends with a reset so
-  # a colour left on doesn't spill into the next.
-  tmux capture-pane -p -e -J -t "$pane" -S "$((start - history))" -E "$((end - history))" |
-    sed 's/$/\x1b[0m/' > "$pin_dir/lines"
+  # it in negatives. -J joins wrapped lines.
+  tmux capture-pane -p -e -J -t "$pane" -S "$((start - history))" -E "$((end - history))" \
+    > "$pin_dir/lines"
 
-  # Neovim's terminal buffers draw the 16 basic ANSI colours (and plain
-  # text) in the colour scheme's palette; give the pinned lines Ghostty's
-  # instead, so they look as they did in the terminal. show-config leaves
+  # Neovim would draw the 16 basic ANSI colours (and plain text) in the
+  # colour scheme's palette; give the pinned lines Ghostty's instead, so
+  # they look as they did in the terminal. show-config leaves
   # out what matches Ghostty's defaults, so those fill the gaps. Without
   # Ghostty (over SSH, say) the pinned lines keep the colour scheme's.
   if command -v ghostty >/dev/null 2>&1; then
@@ -79,33 +78,136 @@ select_pinned_lines() {
       { key = "" }' > "$pin_dir/colors"
   fi
 
-  # Neovim shows them in a terminal buffer with no program behind it
-  # (nvim_open_term), which draws the colour codes like the terminal did.
+  # Neovim shows them in an editable scratch buffer, with the colour codes
+  # turned into highlights (extmarks), which move with the text as you edit
+  # it. (baleia.nvim does this too, but puts the colour a code's length too
+  # far right whenever the code has bold, underline or the like in it.)
   cat > "$pin_dir/pin.lua" <<'EOF'
 local lines = vim.fn.readfile(vim.env.V_PIN_DIR .. '/lines')
 local height = math.max(1, math.min(#lines, math.floor(vim.o.lines / 2)))
 local buf = vim.api.nvim_create_buf(false, true)
+vim.bo[buf].bufhidden = 'wipe'
 vim.cmd('topleft ' .. height .. 'split')
 local win = vim.api.nvim_get_current_win()
 vim.api.nvim_win_set_buf(win, buf)
 for option, value in pairs({ number = false, relativenumber = false, signcolumn = 'no', winfixheight = true }) do
   vim.wo[win][option] = value
 end
--- The terminal's palette, if v found it: buffer-local terminal colours,
--- read when the terminal opens, and its plain text colour.
+
+-- The 16 basic colours: the terminal's, if v found them, otherwise the
+-- colour scheme's (g:terminal_color_N), otherwise xterm's. Plain text gets
+-- the terminal's text colour.
+local palette = {}
 local ok, colors = pcall(vim.fn.readfile, vim.env.V_PIN_DIR .. '/colors')
+local normal = {}
 for _, line in ipairs(ok and colors or {}) do
   local key, value = line:match('^(%w+) (#%x+)$')
   if key == 'fg' then
-    vim.api.nvim_set_hl(0, 'VPinnedNormal', { fg = value })
-    vim.wo[win].winhighlight = 'Normal:VPinnedNormal'
+    normal = { fg = value }
   elseif key then
-    vim.b[buf]['terminal_color_' .. key] = value
+    palette[tonumber(key)] = value
   end
 end
-local chan = vim.api.nvim_open_term(buf, {})
-vim.api.nvim_chan_send(chan, table.concat(lines, '\r\n'))
+local xterm16 = { [0] = '#000000', '#cd0000', '#00cd00', '#cdcd00', '#0000ee', '#cd00cd', '#00cdcd', '#e5e5e5',
+  '#7f7f7f', '#ff0000', '#00ff00', '#ffff00', '#5c5cff', '#ff00ff', '#00ffff', '#ffffff' }
+local function color(n)
+  if n < 16 then
+    return palette[n] or vim.g['terminal_color_' .. n] or xterm16[n]
+  elseif n < 232 then -- the 6x6x6 cube
+    local steps = { 0, 95, 135, 175, 215, 255 }
+    n = n - 16
+    return string.format('#%02x%02x%02x', steps[math.floor(n / 36) + 1], steps[math.floor(n / 6) % 6 + 1], steps[n % 6 + 1])
+  end
+  local grey = 8 + (n - 232) * 10
+  return string.format('#%02x%02x%02x', grey, grey, grey)
+end
+
+-- Apply one SGR sequence's parameters ("1;32", "38;5;208", ...) to style.
+local flags = { [1] = 'bold', [3] = 'italic', [4] = 'underline', [7] = 'reverse', [9] = 'strikethrough' }
+local unflags = { [22] = 'bold', [23] = 'italic', [24] = 'underline', [27] = 'reverse', [29] = 'strikethrough' }
+local function apply(style, params)
+  local codes = {}
+  for code in ((params == '' and '0' or params) .. ';'):gmatch('([^;:]*)[;:]') do
+    table.insert(codes, tonumber(code) or 0)
+  end
+  local i = 1
+  while i <= #codes do
+    local c = codes[i]
+    if c == 0 then
+      for key in pairs(style) do style[key] = nil end
+    elseif flags[c] then
+      style[flags[c]] = true
+    elseif unflags[c] then
+      style[unflags[c]] = nil
+    elseif c >= 30 and c <= 37 then style.fg = color(c - 30)
+    elseif c >= 90 and c <= 97 then style.fg = color(c - 90 + 8)
+    elseif c >= 40 and c <= 47 then style.bg = color(c - 40)
+    elseif c >= 100 and c <= 107 then style.bg = color(c - 100 + 8)
+    elseif c == 39 then style.fg = nil
+    elseif c == 49 then style.bg = nil
+    elseif c == 38 or c == 48 then
+      local key = c == 38 and 'fg' or 'bg'
+      if codes[i + 1] == 5 and codes[i + 2] then
+        style[key] = color(codes[i + 2])
+        i = i + 2
+      elseif codes[i + 1] == 2 and codes[i + 4] then
+        style[key] = string.format('#%02x%02x%02x', codes[i + 2], codes[i + 3], codes[i + 4])
+        i = i + 4
+      end
+    end
+    i = i + 1
+  end
+end
+
+-- Split each line into its text and the styled stretches of it. Any other
+-- escape sequence (an OSC 8 link, say) is dropped.
+local text, spans, style = {}, {}, {}
+for row, raw in ipairs(lines) do
+  local parts, col, pos = {}, 0, 1
+  while pos <= #raw do
+    local s, e, params = raw:find('\27%[([%d;:]*)m', pos)
+    local chunk = raw:sub(pos, s and s - 1 or -1)
+      :gsub('\27%].-\27\\', ''):gsub('\27%].-\7', ''):gsub('\27%[[%d;?]*%a', '')
+    if #chunk > 0 then
+      table.insert(parts, chunk)
+      if next(style) then
+        table.insert(spans, { row - 1, col, col + #chunk, vim.deepcopy(style) })
+      end
+      col = col + #chunk
+    end
+    if not s then break end
+    apply(style, params)
+    pos = e + 1
+  end
+  text[row] = table.concat(parts)
+end
+
+-- Without undo while the lines go in, so u can't empty the buffer.
+vim.bo[buf].undolevels = -1
+vim.api.nvim_buf_set_lines(buf, 0, -1, false, text)
+vim.bo[buf].undolevels = vim.go.undolevels
+vim.bo[buf].modified = false
 pcall(vim.api.nvim_buf_set_name, buf, 'pinned')
+
+-- One highlight group per style; set again after a colour scheme change,
+-- which clears them.
+local ns = vim.api.nvim_create_namespace('v_pinned')
+local groups = {}
+local function define()
+  vim.api.nvim_set_hl(0, 'VPinnedNormal', normal)
+  for name, definition in pairs(groups) do
+    vim.api.nvim_set_hl(0, name, definition)
+  end
+end
+for _, span in ipairs(spans) do
+  local definition = span[4]
+  local name = 'VPinned_' .. vim.fn.sha256(vim.inspect(definition)):sub(1, 12)
+  groups[name] = definition
+  vim.api.nvim_buf_set_extmark(buf, ns, span[1], span[2], { end_col = span[3], hl_group = name })
+end
+define()
+vim.wo[win].winhighlight = 'Normal:VPinnedNormal'
+vim.api.nvim_create_autocmd('ColorScheme', { callback = define })
 -- Quitting the last file window would leave just the pinned lines open;
 -- close them first so :q and :wq still quit.
 vim.api.nvim_create_autocmd('QuitPre', {
@@ -248,7 +350,7 @@ open_files() {
     fi
   done
 
-  # v -v: open the pinned lines above the file (select_pinned_lines).
+  # v !: open the pinned lines above the file (select_pinned_lines).
   local pin_args=()
   if [ -n "$pin_dir" ]; then
     pin_args=(-c "luafile $pin_dir/pin.lua")
@@ -341,9 +443,10 @@ usage: v [FILE | QUERY]...
   v -N | v - N      reopen the last session at line N
   v ~ [QUERY]       pick from files you opened before
   v -c [FILE]       create FILE (or the last unmatched QUERY) and open it
-  v -v [ARGS]       in tmux, select lines of the terminal (y pins them) and
-                    show them, in colour, in a split above the file; then
-                    ARGS as above (v -v, v -v QUERY, v -v -, ...)
+  v ! [ARGS]        in tmux, select lines of the terminal (y pins them) and
+                    show them, in colour and editable, in a split above the
+                    file; then ARGS as above (v !, v ! QUERY, v ! -, ...).
+                    v -v is the same
   v + | v diffs     print the cached diffs of your edits (add "html" for HTML)
   v -h | v --help   show this help
 
@@ -357,7 +460,7 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   exit 0
 fi
 
-if [ "${1:-}" = "-v" ] || [ "${1:-}" = "--visual" ]; then
+if [ "${1:-}" = "!" ] || [ "${1:-}" = "-v" ] || [ "${1:-}" = "--visual" ]; then
   shift
   select_pinned_lines || exit 0
 fi
