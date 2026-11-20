@@ -9,8 +9,12 @@
 order='c r 1 s v m z x y h'
 
 list() {
-    tmux list-keys -N -T root | awk -v order="$order" '
+    # Newer tmux (3.7 from backports) starts each line with the prefix key
+    # ("C-s M-c New tab"), even for root-table keys; -P '' leaves just a
+    # space, which the sub() drops, so older and newer tmux read the same.
+    tmux list-keys -N -P '' -T root | awk -v order="$order" '
         BEGIN { n = split(order, keys, " "); for (i = 1; i <= n; i++) rank[keys[i]] = i }
+        { sub(/^ +/, "") }
         /^M-/ {
             key = substr($1, 3); note = $0; sub(/^[^ ]+ +/, "", note)
             # Alt+1 ... Alt+9 become one line, and so do the four pane moves.
