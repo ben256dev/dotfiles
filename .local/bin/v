@@ -87,10 +87,20 @@ local lines = vim.fn.readfile(vim.env.V_PIN_DIR .. '/lines')
 local height = math.max(1, math.min(#lines, math.floor(vim.o.lines / 2)))
 local buf = vim.api.nvim_create_buf(false, true)
 vim.bo[buf].bufhidden = 'wipe'
-vim.cmd('topleft ' .. height .. 'split')
+-- v ! on its own (V_PIN_ONLY): the lines are all there is, in the one
+-- window, in place of Neovim's empty first buffer. Otherwise a split above
+-- the file.
+local only = vim.env.V_PIN_ONLY == '1'
+local empty = vim.api.nvim_get_current_buf()
+if not only then
+  vim.cmd('topleft ' .. height .. 'split')
+end
 local win = vim.api.nvim_get_current_win()
 vim.api.nvim_win_set_buf(win, buf)
-for option, value in pairs({ number = false, relativenumber = false, signcolumn = 'no', winfixheight = true }) do
+if only and vim.api.nvim_buf_get_name(empty) == '' and not vim.bo[empty].modified then
+  vim.api.nvim_buf_delete(empty, {})
+end
+for option, value in pairs({ number = false, relativenumber = false, signcolumn = 'no', winfixheight = not only }) do
   vim.wo[win][option] = value
 end
 
@@ -208,6 +218,9 @@ end
 define()
 vim.wo[win].winhighlight = 'Normal:VPinnedNormal'
 vim.api.nvim_create_autocmd('ColorScheme', { callback = define })
+if only then
+  return
+end
 -- Quitting the last file window would leave just the pinned lines open;
 -- close them first so :q and :wq still quit.
 vim.api.nvim_create_autocmd('QuitPre', {
@@ -443,10 +456,10 @@ usage: v [FILE | QUERY]...
   v -N | v - N      reopen the last session at line N
   v ~ [QUERY]       pick from files you opened before
   v -c [FILE]       create FILE (or the last unmatched QUERY) and open it
-  v ! [ARGS]        in tmux, select lines of the terminal (y pins them) and
-                    show them, in colour and editable, in a split above the
-                    file; then ARGS as above (v !, v ! QUERY, v ! -, ...).
-                    v -v is the same
+  v !               in tmux, select lines of the terminal (y pins them) and
+                    open just them, in colour and editable
+  v ! ARGS          the same, but in a split above the file ARGS opens, as
+                    above (v ! QUERY, v ! FILE, v ! -, ...). v -v is v !
   v + | v diffs     print the cached diffs of your edits (add "html" for HTML)
   v -h | v --help   show this help
 
@@ -463,6 +476,11 @@ fi
 if [ "${1:-}" = "!" ] || [ "${1:-}" = "-v" ] || [ "${1:-}" = "--visual" ]; then
   shift
   select_pinned_lines || exit 0
+  # On its own: open just the lines, without picking a file.
+  if [ "$#" -eq 0 ]; then
+    V_PIN_DIR="$pin_dir" V_PIN_ONLY=1 nvim -c "luafile $pin_dir/pin.lua" || true
+    exit 0
+  fi
 fi
 
 if [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; then
