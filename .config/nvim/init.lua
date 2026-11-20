@@ -348,6 +348,18 @@ vim.keymap.set('n', '<C-w>m', '<C-w>h', { desc = 'Window left' })
 vim.keymap.set('n', '<C-w>n', '<C-w>j', { desc = 'Window down' })
 vim.keymap.set('n', '<C-w>e', '<C-w>k', { desc = 'Window up' })
 vim.keymap.set('n', '<C-w>i', '<C-w>l', { desc = 'Window right' })
+-- The same without Ctrl-w: Ctrl-m/n/e/i, like Alt-m/n/e/i for tmux panes.
+-- In normal mode these replace Ctrl-m and Ctrl-n (line down, like j),
+-- Ctrl-e (scroll a line) and Ctrl-i (jump forward; Ctrl-o still jumps
+-- back). Ctrl-m and Ctrl-i are only told apart from Enter and Tab through
+-- extended keys (tmux's extended-keys, in .tmux.conf). Even then, a key
+-- with no mapping of its own falls back to its Ctrl twin's, so Enter gets
+-- one that keeps Vim's Enter (Tab already has its own, below).
+vim.keymap.set('n', '<CR>', '<CR>', { desc = 'Line down (keeps Enter off Ctrl-m)' })
+vim.keymap.set('n', '<C-m>', '<C-w>h', { desc = 'Window left' })
+vim.keymap.set('n', '<C-n>', '<C-w>j', { desc = 'Window down' })
+vim.keymap.set('n', '<C-e>', '<C-w>k', { desc = 'Window up' })
+vim.keymap.set('n', '<C-i>', '<C-w>l', { desc = 'Window right' })
 
 -- Keybindings: Browser-style buffer navigation
 vim.keymap.set({ 'n', 'i', 'x' }, '<C-Tab>', '<Cmd>bnext<CR>', {

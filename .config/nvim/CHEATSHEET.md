@@ -44,10 +44,11 @@ Select text with `V` first.
 
 ## Neovim Windows
 
-- `Ctrl-w` + `m` — move to the window on the left
-- `Ctrl-w` + `n` — move to the window below
-- `Ctrl-w` + `e` — move to the window above
-- `Ctrl-w` + `i` — move to the window on the right
+- `Ctrl-m` — move to the window on the left
+- `Ctrl-n` — move to the window below
+- `Ctrl-e` — move to the window above
+- `Ctrl-i` — move to the window on the right
+- `Ctrl-w` + `m` / `n` / `e` / `i` — the same
 
 ## Browser-inspired Buffers
 
