@@ -53,6 +53,8 @@ Build:
 
 `v` command is used as a wrapper for nvim. Use it to open one or more files, quit them with `:wq` / `:wqa`, and resume them quickly with `v -`. `v` automatically fuzzy-picks files in the tree of the current directory, so no need to leave the base directory of your git repo, and you can open files without typing the full name of the file. Forget `ctrl+z` and `fg` workflow, and use `v` to its full potential to quickly switch between the terminal and text editor. Run `v -h` for more info.
 
+In tmux, `v -v` lets you select lines of the terminal first (say a compiler error): it starts tmux's copy mode, `y` pins the selected lines, and Neovim opens with them in colour in a split above the file. `Escape` cancels. Anything after `-v` works as usual (`v -v main.c`).
+
 ### kmonad / Colemak-DH
 
 The entire keyboard is rebound from QWERTY layout to Colemak-DH, with home-row mods and a layer for numbers and symbols, so leaving the home-row becomes unnecessary except for `~` and `` ` ``. `install.sh` turns it on, so after installing, the keyboard is Colemak-DH; Right Alt + Left Win switches to QWERTY and back. Everything else is in `.kmonad/README.md`.
@@ -106,10 +108,6 @@ No prefix needed: hold R or I (kmonad's home-row Alt) and press
 - S / V: split below / to the right; M/N/E/I: move between panes
 - Z: zoom the pane; X: close it; Y: copy mode
 - H: show this list in a popup
-
-In copy mode, select lines (V) and press P to pin them at the top of a new
-tab with `v` below them, say an error message while you fix the file. Q in
-the pinned pane unpins them; quitting `v` closes the tab.
 
 The status bar's right side shows the battery (via upower). While not
 charging it turns red at 20% and below, and becomes a flashing red badge at

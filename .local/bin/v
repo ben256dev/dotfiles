@@ -11,6 +11,91 @@ diff_cache_dir="$state_dir/diffs"
 diff_index_path="$diff_cache_dir/index.tsv"
 diff_cache_keep=200
 
+# Temporary directories: the file snapshots (open_files) and the pinned
+# lines (v -v). Removed however v exits.
+snapshot_dir=""
+pin_dir=""
+cleanup() {
+  [ -z "$snapshot_dir" ] || rm -rf -- "$snapshot_dir"
+  [ -z "$pin_dir" ] || rm -rf -- "$pin_dir"
+}
+trap cleanup EXIT
+
+# v -v: select lines from the terminal with tmux's copy mode, to pin them in
+# a split above the file. The lines are captured from the pane with their
+# colours (capture-pane -e); the selection only says which whole lines.
+#
+# tmux only reports the selection while copy mode is open, so this watches
+# it until copy mode ends. y (or Enter) saves a copy buffer and pins the
+# lines; leaving any other way (Escape, q) saves none and cancels.
+select_pinned_lines() {
+  local pane="${TMUX_PANE:-}" buffer_before state last="" in_mode
+  local present start end history
+
+  if [ -z "${TMUX:-}" ] || [ -z "$pane" ]; then
+    printf 'v: -v selects lines with tmux copy mode, so it needs tmux\n' >&2
+    exit 1
+  fi
+
+  buffer_before="$(tmux list-buffers -F '#{buffer_name}' 2>/dev/null | head -n 1)"
+  tmux copy-mode -t "$pane"
+  tmux display-message -t "$pane" 'v: select lines, then y pins them (Escape cancels)'
+
+  while :; do
+    state="$(tmux display -p -t "$pane" \
+      '#{pane_in_mode} #{selection_present} #{selection_start_y} #{selection_end_y} #{history_size}')"
+    read -r in_mode present _ <<< "$state"
+    [ "$in_mode" = 1 ] || break
+    [ "$present" = 1 ] && last="$state"
+    sleep 0.03
+  done
+
+  [ -n "$last" ] || return 1
+  [ "$(tmux list-buffers -F '#{buffer_name}' 2>/dev/null | head -n 1)" != "$buffer_before" ] || return 1
+
+  read -r _ _ start end history <<< "$last"
+  if [ "$start" -gt "$end" ]; then
+    local swap="$start"
+    start="$end"
+    end="$swap"
+  fi
+
+  pin_dir="$(mktemp -d)"
+  # capture-pane counts the visible screen from 0 and the scrollback above
+  # it in negatives. -J joins wrapped lines. Each line ends with a reset so
+  # a colour left on doesn't spill into the next.
+  tmux capture-pane -p -e -J -t "$pane" -S "$((start - history))" -E "$((end - history))" |
+    sed 's/$/\x1b[0m/' > "$pin_dir/lines"
+
+  # Neovim shows them in a terminal buffer with no program behind it
+  # (nvim_open_term), which draws the colour codes like the terminal did.
+  cat > "$pin_dir/pin.lua" <<'EOF'
+local lines = vim.fn.readfile(vim.env.V_PIN_DIR .. '/lines')
+local height = math.max(1, math.min(#lines, math.floor(vim.o.lines / 2)))
+local buf = vim.api.nvim_create_buf(false, true)
+vim.cmd('topleft ' .. height .. 'split')
+local win = vim.api.nvim_get_current_win()
+vim.api.nvim_win_set_buf(win, buf)
+for option, value in pairs({ number = false, relativenumber = false, signcolumn = 'no', winfixheight = true }) do
+  vim.wo[win][option] = value
+end
+local chan = vim.api.nvim_open_term(buf, {})
+vim.api.nvim_chan_send(chan, table.concat(lines, '\r\n'))
+pcall(vim.api.nvim_buf_set_name, buf, 'pinned')
+-- Quitting the last file window would leave just the pinned lines open;
+-- close them first so :q and :wq still quit.
+vim.api.nvim_create_autocmd('QuitPre', {
+  callback = function()
+    local wins = vim.api.nvim_tabpage_list_wins(0)
+    if #wins == 2 and vim.api.nvim_get_current_win() ~= win and vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_close(win, true)
+    end
+  end,
+})
+vim.cmd('wincmd p')
+EOF
+}
+
 abs_path() {
   realpath -m -- "$1"
 }
@@ -130,9 +215,8 @@ open_files() {
   local i diff_tmp
 
   # Snapshot each file so we can show what changed once nvim exits.
-  # Global (not local) so the EXIT trap can still see it.
+  # Global (not local) so the EXIT trap (cleanup) can still see it.
   snapshot_dir="$(mktemp -d)"
-  trap 'rm -rf -- "$snapshot_dir"' EXIT
 
   for i in "${!files[@]}"; do
     if [ -f "${files[$i]}" ]; then
@@ -140,11 +224,17 @@ open_files() {
     fi
   done
 
+  # v -v: open the pinned lines above the file (select_pinned_lines).
+  local pin_args=()
+  if [ -n "$pin_dir" ]; then
+    pin_args=(-c "luafile $pin_dir/pin.lua")
+  fi
+
   if [ -n "$resume_line" ]; then
-    nvim -c "autocmd VimEnter * ++once normal! ${resume_line}Gzz" -- "${files[@]}" || true
+    V_PIN_DIR="$pin_dir" nvim -c "autocmd VimEnter * ++once normal! ${resume_line}Gzz" "${pin_args[@]}" -- "${files[@]}" || true
   else
     # silent!: g; fails with E664 on files that have no change history yet.
-    nvim -c 'autocmd VimEnter * ++once silent! normal! g;zz' -- "${files[@]}" || true
+    V_PIN_DIR="$pin_dir" nvim -c 'autocmd VimEnter * ++once silent! normal! g;zz' "${pin_args[@]}" -- "${files[@]}" || true
   fi
 
   for i in "${!files[@]}"; do
@@ -227,6 +317,9 @@ usage: v [FILE | QUERY]...
   v -N | v - N      reopen the last session at line N
   v ~ [QUERY]       pick from files you opened before
   v -c [FILE]       create FILE (or the last unmatched QUERY) and open it
+  v -v [ARGS]       in tmux, select lines of the terminal (y pins them) and
+                    show them, in colour, in a split above the file; then
+                    ARGS as above (v -v, v -v QUERY, v -v -, ...)
   v + | v diffs     print the cached diffs of your edits (add "html" for HTML)
   v -h | v --help   show this help
 
@@ -238,6 +331,11 @@ EOF
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   usage
   exit 0
+fi
+
+if [ "${1:-}" = "-v" ] || [ "${1:-}" = "--visual" ]; then
+  shift
+  select_pinned_lines || exit 0
 fi
 
 if [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; then
