@@ -360,6 +360,9 @@ vim.keymap.set('n', '<C-m>', '<C-w>h', { desc = 'Window left' })
 vim.keymap.set('n', '<C-n>', '<C-w>j', { desc = 'Window down' })
 vim.keymap.set('n', '<C-e>', '<C-w>k', { desc = 'Window up' })
 vim.keymap.set('n', '<C-i>', '<C-w>l', { desc = 'Window right' })
+-- Ctrl-e's scroll a line down moves to Ctrl-k, unused in normal mode, as
+-- the down to Ctrl-y's up. (Insert mode's Ctrl-k digraphs are untouched.)
+vim.keymap.set({ 'n', 'x' }, '<C-k>', '<C-e>', { desc = 'Scroll down a line' })
 
 -- Keybindings: Browser-style buffer navigation
 vim.keymap.set({ 'n', 'i', 'x' }, '<C-Tab>', '<Cmd>bnext<CR>', {

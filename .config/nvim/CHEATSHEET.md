@@ -49,6 +49,7 @@ Select text with `V` first.
 - `Ctrl-e` — move to the window above
 - `Ctrl-i` — move to the window on the right
 - `Ctrl-w` + `m` / `n` / `e` / `i` — the same
+- `Ctrl-k` / `Ctrl-y` — scroll down / up a line (Ctrl-e's scroll moved to Ctrl-k)
 
 ## Browser-inspired Buffers
 
