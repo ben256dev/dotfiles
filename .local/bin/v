@@ -459,7 +459,8 @@ usage: v [FILE | QUERY]...
   v !               in tmux, select lines of the terminal (y pins them) and
                     open just them, in colour and editable
   v ! ARGS          the same, but in a split above the file ARGS opens, as
-                    above (v ! QUERY, v ! FILE, v ! -, ...). v -v is v !
+                    above (v ! QUERY, v ! FILE, v ! -, ...). v -v is v !,
+                    and v !- or v !-N is v ! - or v ! -N
   v + | v diffs     print the cached diffs of your edits (add "html" for HTML)
   v -h | v --help   show this help
 
@@ -471,6 +472,12 @@ EOF
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   usage
   exit 0
+fi
+
+# v !- and v !-N are v ! - and v ! -N (and v !QUERY is v ! QUERY). Bash would
+# take !- for history; .bashrc escapes it on v's lines.
+if [[ "${1:-}" == '!'?* ]]; then
+  set -- '!' "${1#!}" "${@:2}"
 fi
 
 if [ "${1:-}" = "!" ] || [ "${1:-}" = "-v" ] || [ "${1:-}" = "--visual" ]; then
