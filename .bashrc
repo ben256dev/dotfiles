@@ -145,5 +145,3 @@ if [[ $- == *i* ]]; then
     bind '"\C-x\C-^": accept-line'
     bind '"\C-m": "\C-x\C-]\C-x\C-^"'
 fi
-
-path_prepend "$HOME/.clanker"
