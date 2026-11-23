@@ -267,9 +267,31 @@ record_open() {
   mv "${history_file_path}.tmp" "$history_file_path"
 }
 
+# .env files hold secrets: v won't open them, since copies would stay in
+# its diffs (~/.local/state/v/diffs) and Neovim's swap, undo and shada
+# files. sudoedit edits a temporary copy, in plain vi. Templates
+# (.env.example and the like) are fine.
+refuse_env_files() {
+  local file refused=()
+  for file in "$@"; do
+    case "$(basename -- "$file")" in
+      *.example | *.sample | *.template | *.dist) ;;
+      .env | .env.* | *.env) refused+=("$file") ;;
+    esac
+  done
+  [ "${#refused[@]}" -gt 0 ] || return 0
+  printf "v: won't open .env files, which hold secrets: %s\n" "${refused[*]}" >&2
+  printf 'v: edit with: sudoedit' >&2
+  printf ' %q' "${refused[@]}" >&2
+  printf '\n' >&2
+  exit 1
+}
+
 remember_session() {
   local file full
   local full_files=()
+
+  refuse_env_files "$@"
 
   for file in "$@"; do
     full="$(abs_path "$file")"
@@ -409,6 +431,8 @@ create_file() {
     exit 1
   fi
 
+  refuse_env_files "$file"
+
   parent="$(dirname -- "$file")"
   if [ ! -d "$parent" ]; then
     printf 'v: parent directory does not exist: %s\n' "$parent" >&2
@@ -469,7 +493,8 @@ then pick from history), v -12!~ or v ~!-12 (the same, at line 12), v !-
 (pin above the last session). Not - with ~: they open different things.
 
 After nvim exits, v prints a diff of what you changed. The newest 200 diffs
-are kept in ~/.local/state/v/diffs.
+are kept in ~/.local/state/v/diffs. So v won't open .env files (.env,
+.env.*, *.env, but not .env.example and the like): use sudoedit.
 EOF
 }
 
