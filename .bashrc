@@ -123,7 +123,8 @@ fi
 # three back. So Enter, on v's lines, first turns history expansion off
 # (set +H), and the next prompt turns it back on. The line stays as typed.
 #
-# v ! (v -v) lines, in tmux, Enter runs itself, without readline's newline:
+# v ! lines (a ! among v's first words: v !-, v ~!, v -12 !; or v -v), in
+# tmux, Enter runs itself, without readline's newline:
 # copy mode opens with the screen as it was, and v puts the newline in
 # after the lines are picked (V_NEWLINE). Enter is a macro, this function
 # then \C-x\C-^, which it binds to accept-line, or for those lines to a
@@ -133,7 +134,7 @@ if [[ $- == *i* ]]; then
         bind '"\C-x\C-^": accept-line'
         [[ $READLINE_LINE =~ ^[[:space:]]*v[[:space:]] ]] || return 0
         if [ -n "${TMUX:-}" ] &&
-            [[ $READLINE_LINE =~ ^[[:space:]]*v[[:space:]]+(!|-v([[:space:]]|$)|--visual([[:space:]]|$)) ]]; then
+            [[ $READLINE_LINE =~ ^[[:space:]]*v([[:space:]]+[-~0-9]+)*[[:space:]]+([-~0-9]*!|-v([[:space:]]|$)|--visual([[:space:]]|$)) ]]; then
             local line=$READLINE_LINE prompt=${PS1@P}
             history -s -- "$line"
             READLINE_LINE='' READLINE_POINT=0
