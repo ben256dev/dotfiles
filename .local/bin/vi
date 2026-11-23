@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# vi, but as you (not root) it won't open .env files, which hold secrets:
-# sudo vi asks for your password first. (sudo looks vi up in its own PATH,
-# without ~/.local/bin, so sudo vi is the real vi.) The same files as v
-# refuses: .env, .env.*, *.env, but not templates like .env.example.
+# vi (and nvim, view, ex and vim.tiny, links to this), but as you (not
+# root) they won't open .env files, which hold secrets: sudo vi asks for
+# your password first. (sudo looks vi up in its own PATH, without
+# ~/.local/bin, so sudo vi is the real vi.) The same files as v refuses:
+# .env, .env.*, *.env, but not templates like .env.example.
 set -u
+name=$(basename -- "$0")
 
 if [ "$(id -u)" != 0 ]; then
     refused=()
@@ -15,20 +17,27 @@ if [ "$(id -u)" != 0 ]; then
         esac
     done
     if [ "${#refused[@]}" -gt 0 ]; then
-        printf "vi: won't open .env files as you, they hold secrets: %s\n" "${refused[*]}" >&2
-        printf 'vi: edit with: sudo vi' >&2
+        printf "%s: won't open .env files as you, they hold secrets: %s\n" "$name" "${refused[*]}" >&2
+        printf '%s: edit with: sudo vi' "$name" >&2
         printf ' %q' "${refused[@]}" >&2
         printf '\n' >&2
         exit 1
     fi
 fi
 
-# The real vi: the next one on PATH that isn't this script.
+# The real one: the next $name on PATH that isn't this script. (Run after
+# the search, not in its loop, whose stdin isn't the terminal: nvim would
+# read that into a buffer.)
 self=$(readlink -f -- "$0")
+real=""
 while IFS= read -r candidate; do
     if [ "$(readlink -f -- "$candidate")" != "$self" ]; then
-        exec "$candidate" "$@"
+        real=$candidate
+        break
     fi
-done < <(type -ap vi)
-printf 'vi: no other vi on PATH\n' >&2
-exit 127
+done < <(type -ap -- "$name")
+if [ -z "$real" ]; then
+    printf '%s: no other %s on PATH\n' "$name" "$name" >&2
+    exit 127
+fi
+exec "$real" "$@"

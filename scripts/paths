@@ -12,6 +12,10 @@
 .kmonad
 .local/bin/v
 .local/bin/vi
+.local/bin/nvim
+.local/bin/view
+.local/bin/ex
+.local/bin/vim.tiny
 .local/bin/tmux-session
 .config/nvim
 .config/ghostty

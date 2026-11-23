@@ -118,6 +118,14 @@ elif [ -f /usr/share/bash-completion/completions/fzf ]; then
     source /usr/share/bash-completion/completions/fzf
 fi
 
+# No nvim at the prompt, as there's no vim: use v, which opens files in it
+# (and won't open .env files). Scripts, v itself and git (core.editor) still
+# run nvim, and so does command nvim.
+nvim() {
+    printf 'nvim: use v (or command nvim)\n' >&2
+    return 127
+}
+
 # v ! pins terminal lines, and v !- (v ! -) or v !-3 should work too, but
 # bash reads !- as history: an error, or !-3 quietly becomes the command
 # three back. So Enter, on v's lines, first turns history expansion off
