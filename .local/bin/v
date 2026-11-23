@@ -269,7 +269,7 @@ record_open() {
 
 # .env files hold secrets: v won't open them, since copies would stay in
 # its diffs (~/.local/state/v/diffs) and Neovim's swap, undo and shada
-# files. sudoedit edits a temporary copy, in plain vi. Templates
+# files. sudo vi asks for your password, then edits in plain vi. Templates
 # (.env.example and the like) are fine.
 refuse_env_files() {
   local file refused=()
@@ -281,7 +281,7 @@ refuse_env_files() {
   done
   [ "${#refused[@]}" -gt 0 ] || return 0
   printf "v: won't open .env files, which hold secrets: %s\n" "${refused[*]}" >&2
-  printf 'v: edit with: sudoedit' >&2
+  printf 'v: edit with: sudo vi' >&2
   printf ' %q' "${refused[@]}" >&2
   printf '\n' >&2
   exit 1
@@ -494,7 +494,7 @@ then pick from history), v -12!~ or v ~!-12 (the same, at line 12), v !-
 
 After nvim exits, v prints a diff of what you changed. The newest 200 diffs
 are kept in ~/.local/state/v/diffs. So v won't open .env files (.env,
-.env.*, *.env, but not .env.example and the like): use sudoedit.
+.env.*, *.env, but not .env.example and the like): use sudo vi.
 EOF
 }
 
