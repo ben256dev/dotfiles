@@ -120,28 +120,21 @@ fi
 
 # v ! pins terminal lines, and v !- (v ! -) or v !-3 should work too, but
 # bash reads !- as history: an error, or !-3 quietly becomes the command
-# three back. So Enter first escapes a word's leading ! on v's lines (\!,
-# which history leaves alone; v still gets a plain !), then runs the line.
+# three back. So Enter, on v's lines, first turns history expansion off
+# (set +H), and the next prompt turns it back on. The line stays as typed.
 if [[ $- == *i* ]]; then
-    __v_escape_bang() {
-        [[ $READLINE_LINE =~ ^[[:space:]]*v[[:space:]] ]] || return 0
-        # Only outside quotes: inside them the backslash would stay.
-        local line=$READLINE_LINE out="" quote="" c prev=" " i
-        for ((i = 0; i < ${#line}; i++)); do
-            c=${line:i:1}
-            if [ -n "$quote" ]; then
-                [ "$c" = "$quote" ] && quote=""
-            elif [ "$c" = "'" ] || [ "$c" = '"' ]; then
-                quote=$c
-            elif [ "$c" = '!' ] && [[ $prev == [[:space:]] ]]; then
-                c='\!'
-            fi
-            out+=$c prev=${line:i:1}
-        done
-        READLINE_LINE=$out
-        READLINE_POINT=${#out}
+    __v_history_off() {
+        if [[ $READLINE_LINE =~ ^[[:space:]]*v[[:space:]] ]]; then
+            set +H
+            __v_history_was_off=1
+        fi
     }
-    bind -x '"\C-x\C-]": __v_escape_bang'
+    __v_history_on() {
+        [ -z "${__v_history_was_off:-}" ] || set -H
+        unset __v_history_was_off
+    }
+    PROMPT_COMMAND+=(__v_history_on)
+    bind -x '"\C-x\C-]": __v_history_off'
     bind '"\C-x\C-^": accept-line'
     bind '"\C-m": "\C-x\C-]\C-x\C-^"'
 fi
