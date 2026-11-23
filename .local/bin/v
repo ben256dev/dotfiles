@@ -482,7 +482,12 @@ fi
 
 if [ "${1:-}" = "!" ] || [ "${1:-}" = "-v" ] || [ "${1:-}" = "--visual" ]; then
   shift
-  select_pinned_lines || exit 0
+  # Run from .bashrc's Enter, the command line's newline waits until the
+  # lines are picked (V_NEWLINE): copy mode opens with nothing scrolled.
+  pinned=0
+  select_pinned_lines || pinned=$?
+  [ -z "${V_NEWLINE:-}" ] || printf '\n'
+  [ "$pinned" = 0 ] || exit 0
   # On its own: open just the lines, without picking a file.
   if [ "$#" -eq 0 ]; then
     V_PIN_DIR="$pin_dir" V_PIN_ONLY=1 nvim -c "luafile $pin_dir/pin.lua" || true

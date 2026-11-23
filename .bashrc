@@ -122,19 +122,38 @@ fi
 # bash reads !- as history: an error, or !-3 quietly becomes the command
 # three back. So Enter, on v's lines, first turns history expansion off
 # (set +H), and the next prompt turns it back on. The line stays as typed.
+#
+# v ! (v -v) lines, in tmux, Enter runs itself, without readline's newline:
+# copy mode opens with the screen as it was, and v puts the newline in
+# after the lines are picked (V_NEWLINE). Enter is a macro, this function
+# then \C-x\C-^, which it binds to accept-line, or for those lines to a
+# no-op, the line already run.
 if [[ $- == *i* ]]; then
-    __v_history_off() {
-        if [[ $READLINE_LINE =~ ^[[:space:]]*v[[:space:]] ]]; then
-            set +H
-            __v_history_was_off=1
+    __v_enter() {
+        bind '"\C-x\C-^": accept-line'
+        [[ $READLINE_LINE =~ ^[[:space:]]*v[[:space:]] ]] || return 0
+        if [ -n "${TMUX:-}" ] &&
+            [[ $READLINE_LINE =~ ^[[:space:]]*v[[:space:]]+(!|-v([[:space:]]|$)|--visual([[:space:]]|$)) ]]; then
+            local line=$READLINE_LINE prompt=${PS1@P}
+            history -s -- "$line"
+            READLINE_LINE='' READLINE_POINT=0
+            # Bash wipes the line before running this: put it back, without
+            # PS1's \[ \] markers (\001 \002 once expanded).
+            prompt=${prompt//$'\001'/}
+            printf '%s%s' "${prompt//$'\002'/}" "$line"
+            (export V_NEWLINE=1; eval "$line")
+            bind '"\C-x\C-^": redraw-current-line'
+            return 0
         fi
+        set +H
+        __v_history_was_off=1
     }
     __v_history_on() {
         [ -z "${__v_history_was_off:-}" ] || set -H
         unset __v_history_was_off
     }
     PROMPT_COMMAND+=(__v_history_on)
-    bind -x '"\C-x\C-]": __v_history_off'
+    bind -x '"\C-x\C-]": __v_enter'
     bind '"\C-x\C-^": accept-line'
     bind '"\C-m": "\C-x\C-]\C-x\C-^"'
 fi
