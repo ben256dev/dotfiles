@@ -12,3 +12,4 @@
 	required = true
 [safe]
 	directory = /var/lib/dgett/repo.git
+	directory = /var/lib/dgett/repo.git

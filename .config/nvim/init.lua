@@ -8,6 +8,26 @@ vim.opt.expandtab = true
 vim.opt.ttimeoutlen = 0
 vim.opt.showmode = false
 
+-- The clipboard through xclip, as Neovim would (on X11), but with xclip's
+-- output to /dev/null. xclip stays to hand the copy out, and says "Waiting
+-- for selection request number N" on stderr after each paste; Neovim keeps
+-- that stderr, so once Neovim quits, the message after the first paste
+-- kills xclip (a pipe with no reader), and the clipboard is gone.
+if vim.env.DISPLAY and vim.fn.executable('xclip') == 1 then
+  local function copy(selection)
+    return { 'sh', '-c', 'exec xclip -quiet -i -selection ' .. selection .. ' >/dev/null 2>&1' }
+  end
+  vim.g.clipboard = {
+    name = 'xclip (quiet)',
+    copy = { ['+'] = copy('clipboard'), ['*'] = copy('primary') },
+    paste = {
+      ['+'] = { 'xclip', '-o', '-selection', 'clipboard' },
+      ['*'] = { 'xclip', '-o', '-selection', 'primary' },
+    },
+    cache_enabled = 1,
+  }
+end
+
 vim.g.mapleader = ' '
 vim.g.python_highlight_all = 1
 vim.g.markdown_fenced_languages = {
