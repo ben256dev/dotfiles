@@ -94,3 +94,8 @@ XF86AudioMute
     wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 XF86AudioMicMute
     wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+
+# Print Screen: drag over an area to capture, like Lightshot, then annotate,
+# copy (Ctrl+C) or save (Ctrl+S). Escape cancels.
+Print
+    flameshot gui

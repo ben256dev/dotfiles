@@ -236,6 +236,8 @@ PACKAGES=(
     # Sound. Also what Bluetooth earbuds connect to: without it bluez refuses
     # them (br-connection-profile-unavailable).
     pipewire-audio
+    # Print Screen (sxhkdrc): area screenshots, like Lightshot.
+    flameshot
 )
 if pkg_exists firefox-esr; then
     PACKAGES+=(firefox-esr)
