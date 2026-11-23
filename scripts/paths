@@ -11,6 +11,7 @@
 .tmux/vim.lua
 .kmonad
 .local/bin/v
+.local/bin/vi
 .local/bin/tmux-session
 .config/nvim
 .config/ghostty
