@@ -13,6 +13,7 @@ Select text with `V` first.
 
 ## Normal mode
 
+- `Ctrl-y` / `Ctrl-k` — scroll window up / down
 - `,c` `,sh` `,py` `,html` `,mainc` `,go` `,c3` — common language skeletons
 - `Space x` — check / uncheck the `- [ ]` item on the current line (Markdown files only)
 
@@ -68,3 +69,5 @@ I rarely use these
 
 - `:Git` — opens fugitive plugin
 - `ga` — EasyAlign plugin
+    - `Space` — Align whitespace after 1st column
+    - `2 + Space` — Align whitespace after 2nd column
