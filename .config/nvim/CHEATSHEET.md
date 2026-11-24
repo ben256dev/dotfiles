@@ -14,7 +14,6 @@ Select text with `V` first.
 ## Normal mode
 
 - `Ctrl-y` / `Ctrl-k` — scroll window up / down
-- `Space y` + motion — copy to the system clipboard (`Space y y` the line, `Space y i w` a word)
 - `,c` `,sh` `,py` `,html` `,mainc` `,go` `,c3` — common language skeletons
 - `Space x` — check / uncheck the `- [ ]` item on the current line (Markdown files only)
 
