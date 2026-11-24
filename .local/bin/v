@@ -21,8 +21,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# v ! (or -v): select lines from the terminal with tmux's copy mode, to pin them in
-# a split above the file. The lines are captured from the pane with their
+# v ! (or -v): select lines from the terminal with tmux's copy mode, to pin
+# them in a split above the file. The lines are captured from the pane with their
 # colours (capture-pane -e); the selection only says which whole lines.
 #
 # tmux only reports the selection while copy mode is open, so this watches
@@ -87,20 +87,11 @@ local lines = vim.fn.readfile(vim.env.V_PIN_DIR .. '/lines')
 local height = math.max(1, math.min(#lines, math.floor(vim.o.lines / 2)))
 local buf = vim.api.nvim_create_buf(false, true)
 vim.bo[buf].bufhidden = 'wipe'
--- v ! on its own (V_PIN_ONLY): the lines are all there is, in the one
--- window, in place of Neovim's empty first buffer. Otherwise a split above
--- the file.
-local only = vim.env.V_PIN_ONLY == '1'
-local empty = vim.api.nvim_get_current_buf()
-if not only then
-  vim.cmd('topleft ' .. height .. 'split')
-end
+-- In a split above the file.
+vim.cmd('topleft ' .. height .. 'split')
 local win = vim.api.nvim_get_current_win()
 vim.api.nvim_win_set_buf(win, buf)
-if only and vim.api.nvim_buf_get_name(empty) == '' and not vim.bo[empty].modified then
-  vim.api.nvim_buf_delete(empty, {})
-end
-for option, value in pairs({ number = false, relativenumber = false, signcolumn = 'no', winfixheight = not only }) do
+for option, value in pairs({ number = false, relativenumber = false, signcolumn = 'no', winfixheight = true }) do
   vim.wo[win][option] = value
 end
 
@@ -218,9 +209,6 @@ end
 define()
 vim.wo[win].winhighlight = 'Normal:VPinnedNormal'
 vim.api.nvim_create_autocmd('ColorScheme', { callback = define })
-if only then
-  return
-end
 -- Quitting the last file window would leave just the pinned lines open;
 -- close them first so :q and :wq still quit.
 vim.api.nvim_create_autocmd('QuitPre', {
@@ -472,25 +460,30 @@ usage() {
   cat <<'EOF'
 usage: v [FILE | QUERY]...
 
-  v                 fuzzy-pick one or more files (git files, or fd outside git)
+  v                 reopen the last session (with none, pick as v . does)
+  v N | v -N        reopen the last session at line N
   v QUERY           open QUERY if it is a file, else fuzzy-match it
                     (exact file names win, then files with the same extension)
   v A B ...         open several files or queries at once
-  v -               reopen the last session
-  v -N | v - N      reopen the last session at line N
-  v -N ARGS         open what ARGS opens at line N (v -12 main.c)
+  v .               fuzzy-pick one or more files (git files, or fd outside git)
+  v . QUERY...      the same as v QUERY, but every word is a file or query,
+                    numbers too (v . 42 looks for 42); v .. looks for a dot
+  v N ARGS          open what ARGS opens at line N (v 12 main.c)
+  v -               reopen the last session (only that, never a pick)
   v ~ [QUERY]       pick from files you opened before
   v -c [FILE]       create FILE (or the last unmatched QUERY) and open it
   v !               in tmux, select lines of the terminal (y pins them) and
-                    open just them, in colour and editable (v -v is v !)
-  v ! ARGS          the same, but in a split above the file ARGS opens, as
-                    above (v ! QUERY, v ! FILE, v ! -, v ! ~, ...)
+                    reopen the last session below them, in colour and
+                    editable (v -v is v !)
+  v ! ARGS          the same, but above what ARGS opens (v ! QUERY,
+                    v !42, v ! ., v ! ~, ...)
   v + | v diffs     print the cached diffs of your edits (add "html" for HTML)
   v -h | v --help   show this help
 
-!, ~, - and -N go together in any order, run together or not: v !~ (pin,
-then pick from history), v -12!~ or v ~!-12 (the same, at line 12), v !-
-(pin above the last session). Not - with ~: they open different things.
+!, ~, - and N go together in any order, run together or not: v !~ (pin,
+then pick from history), v 12!~ or v ~!-12 (the same, at line 12), v !42
+(pin above the last session, at line 42). Not two of -, ~ and .: they
+open different things.
 
 After nvim exits, v prints a diff of what you changed. The newest 200 diffs
 are kept in ~/.local/state/v/diffs. So v won't open .env files (.env,
@@ -504,14 +497,23 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
 fi
 
 # The first arguments say how to open: ! pins terminal lines (also -v,
-# --visual), ~ picks from history, - reopens the last session, -N goes to
-# line N. Any of them, in any order, alone or run together: v !~, v -12!,
-# v ~!-12, v ! ~. - and ~ both say what to open, so not together.
+# --visual), ~ picks from history, - reopens the last session, . picks
+# from all the files, and N (or -N) goes to line N. With none of them, v
+# reopens the last session. !, ~, - and N go in any order, alone or run
+# together: v !~, v !42, v ~!-12, v ! ~. -, ~ and . all say what to open,
+# so only one of them.
 pin=false
-source="" # last (-) or history (~)
+source="" # last (-), history (~) or pick (.)
+source_name() {
+  case "$1" in
+    last) printf -- '- (the last session)' ;;
+    history) printf -- '~ (history)' ;;
+    pick) printf -- '. (all files)' ;;
+  esac
+}
 set_source() {
   if [ -n "$source" ] && [ "$source" != "$1" ]; then
-    printf 'v: - (the last session) and ~ (history) open different things; use one\n' >&2
+    printf 'v: %s and %s open different things; use one\n' "$(source_name "$source")" "$(source_name "$1")" >&2
     exit 1
   fi
   source="$1"
@@ -527,14 +529,19 @@ while [ "$#" -gt 0 ]; do
   arg="$1"
   case "$arg" in
     -v | --visual) pin=true; shift; continue ;;
+    # . : the rest are files and queries, numbers too (v . 42 looks for 42).
+    # v .. is v . . (look for a dot).
+    .) set_source pick; shift; break ;;
+    ..) set_source pick; set -- . "${@:2}"; break ;;
     # Bash's tilde expansion: a lone ~ comes as $HOME, and ~- as $OLDPWD.
     "$HOME") arg='~' ;;
     "${OLDPWD:-}") [ -z "${OLDPWD:-}" ] || arg='~-' ;;
   esac
-  # Only !, ~, - and digits (digits after a -), checked before any of it
-  # is taken. So a file named 12 is still a file. But v !QUERY is
-  # v ! QUERY: the ! pins, and the rest is looked at again.
-  if ! [[ "$arg" =~ ^(-[0-9]+|[-!~])+$ ]]; then
+  # Only !, ~, - and digits, checked before any of it is taken. v 42 is
+  # line 42 (of the last session), even with a file named 42: v . 42 or
+  # v ./42 opens that. v !QUERY is v ! QUERY: the ! pins, and the rest is
+  # looked at again.
+  if ! [[ "$arg" =~ ^(-?[0-9]+|[-!~])+$ ]]; then
     [[ "$arg" == '!'?* ]] || break
     pin=true
     set -- "${arg#!}" "${@:2}"
@@ -542,7 +549,7 @@ while [ "$#" -gt 0 ]; do
   fi
   rest="$arg"
   while [ -n "$rest" ]; do
-    if [[ "$rest" =~ ^-([0-9]+)(.*)$ ]]; then
+    if [[ "$rest" =~ ^-?([0-9]+)(.*)$ ]]; then
       set_line "${BASH_REMATCH[1]}"
       rest="${BASH_REMATCH[2]}"
       continue
@@ -556,23 +563,28 @@ while [ "$#" -gt 0 ]; do
   done
   shift
 done
-# v - N, as well as v -N.
-if [ "$source" = last ] && [ -z "$resume_line" ] && [ "$#" -eq 1 ] && [[ "$1" =~ ^[0-9]+$ ]]; then
-  set_line "$1"
-  shift
-fi
 if [ -n "$resume_line" ]; then
   resume_line="$((10#$resume_line))"
   if [ "$resume_line" -eq 0 ]; then
     printf 'v: line number must be positive\n' >&2
     exit 1
   fi
-  # -N on its own is the last session at line N.
-  [ -n "$source" ] || [ "$#" -gt 0 ] || source=last
 fi
 if [ "$source" = last ] && [ "$#" -gt 0 ]; then
   printf 'v: - reopens the last session, so it takes no files (got: %s)\n' "$*" >&2
   exit 1
+fi
+
+# Nothing to say what: the last session, or with none (or its files gone),
+# all the files, as v . would.
+if [ -z "$source" ] && [ "$#" -eq 0 ]; then
+  source=pick
+  if [ -f "$last_file_path" ] && [ -n "$(awk 'NF' "$last_file_path")" ]; then
+    source=last
+    while IFS= read -r f; do
+      [ -z "$f" ] || [ -e "$f" ] || { source=pick; break; }
+    done < "$last_file_path"
+  fi
 fi
 
 if [ "$pin" = true ]; then
@@ -582,14 +594,10 @@ if [ "$pin" = true ]; then
   select_pinned_lines || pinned=$?
   [ -z "${V_NEWLINE:-}" ] || printf '\n'
   [ "$pinned" = 0 ] || exit 0
-  # On its own: open just the lines, without picking a file.
-  if [ -z "$source" ] && [ "$#" -eq 0 ]; then
-    V_PIN_DIR="$pin_dir" V_PIN_ONLY=1 nvim -c "luafile $pin_dir/pin.lua" || true
-    exit 0
-  fi
 fi
 
-if [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; then
+# (After v ., -c and + are queries like any other.)
+if [ -z "$source" ] && { [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; }; then
   if [ "$#" -eq 1 ]; then
     if [ ! -s "$missing_file_path" ] || [ ! -s "$missing_directory_path" ]; then
       printf 'usage: v -c [FILE]\n' >&2
@@ -615,7 +623,7 @@ if [ "${1:-}" = "-c" ] || [ "${1:-}" = "--create" ]; then
   exit 0
 fi
 
-if [ "${1:-}" = "+" ] || [ "${1:-}" = "diffs" ]; then
+if [ -z "$source" ] && { [ "${1:-}" = "+" ] || [ "${1:-}" = "diffs" ]; }; then
   output_cached_diffs "${2:-}"
 fi
 
@@ -659,7 +667,8 @@ if [ "$source" = history ]; then
   exit 0
 fi
 
-# Everything else: each argument is an existing file or a fuzzy query.
+# Everything else (v . and v QUERY): each argument is an existing file or a
+# fuzzy query, and with none, pick from all the files.
 need_file_list=false
 if [ "$#" -eq 0 ]; then
   need_file_list=true

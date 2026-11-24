@@ -126,7 +126,7 @@ nvim() {
     return 127
 }
 
-# v ! pins terminal lines, and v !- (v ! -) or v !-3 should work too, but
+# v ! pins terminal lines, and v !- (v ! -) or v !42 should work too, but
 # bash reads !- as history: an error, or !-3 quietly becomes the command
 # three back. So Enter, on v's lines, first turns history expansion off
 # (set +H), and the next prompt turns it back on. The line stays as typed.

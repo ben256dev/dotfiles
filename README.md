@@ -51,9 +51,9 @@ Build:
 
 ### v
 
-`v` command is used as a wrapper for nvim. Use it to open one or more files, quit them with `:wq` / `:wqa`, and resume them quickly with `v -`. `v` automatically fuzzy-picks files in the tree of the current directory, so no need to leave the base directory of your git repo, and you can open files without typing the full name of the file. Forget `ctrl+z` and `fg` workflow, and use `v` to its full potential to quickly switch between the terminal and text editor. Run `v -h` for more info.
+`v` command is used as a wrapper for nvim. Use it to open one or more files, quit them with `:wq` / `:wqa`, and resume them quickly with just `v` (`v 42` resumes at line 42). `v foo` fuzzy-picks files matching foo in the tree of the current directory, and `v .` picks from all of them, so no need to leave the base directory of your git repo, and you can open files without typing the full name of the file. (`v . 42` looks for 42 rather than going to line 42.) Forget `ctrl+z` and `fg` workflow, and use `v` to its full potential to quickly switch between the terminal and text editor. Run `v -h` for more info.
 
-In tmux, `v !` lets you select lines of the terminal first (say a compiler error): it starts tmux's copy mode, `y` pins the selected lines, and Neovim opens with just them, in the terminal's colours and editable. `Escape` cancels. With more after the `!`, that opens as usual, below the lines (`v ! main.c`). `v -v` is the same as `v !`.
+In tmux, `v !` lets you select lines of the terminal first (say a compiler error): it starts tmux's copy mode, `y` pins the selected lines, and Neovim reopens the last session below them, in the terminal's colours and editable (`v !42` at line 42). `Escape` cancels. With more after the `!`, that opens instead (`v ! main.c`, `v ! .`). `v -v` is the same as `v !`.
 
 ### kmonad / Colemak-DH
 
