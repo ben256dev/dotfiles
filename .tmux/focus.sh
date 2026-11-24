@@ -82,13 +82,32 @@ tmux set -g @unfocused_status-left "$(printf '%s' "$left" | grey | sed "s/fg=$ba
 tmux set -g @focused_status-right "#[fg=$bar_fg,bg=$bar_bg]#{@cheatsheet_hint}   $(tmux show -gv status-right)"
 tmux set -g @unfocused_status-right ''
 
-# A tab whose pane is in copy mode has its number and name in copy mode's
-# cursor colour (@copy_mode_colour, .tmux.conf), focused or not.
-copy_mode='#{?#{==:#{pane_mode},copy-mode},#[fg=#{@copy_mode_colour}],}'
+# A tab whose pane is in copy mode turns copy mode's cursor colour
+# (@copy_mode_colour, .tmux.conf), with white text, focused or not. A tab
+# is three styles: the arrow into it, its text, the arrow out. The arrows
+# take the colour too when focused (as the arrow's background going in,
+# its foreground coming out); unfocused, they're spaces, so only the text.
+copy_mode() {
+    copy=$1 perl -pe '
+        my $c = "#{==:#{pane_mode},copy-mode}", $p = "#{\@copy_mode_colour}";
+        my $n = 0;
+        s{#\[([^\]]*)\]}{
+            my ($style, $i) = ($1, $n++);
+            if ($i == 1) {
+                $style =~ s/\bfg=([^,]+)/fg=#{?$c,#ffffff,$1}/;
+            }
+            if ($i == 1 || ($i == 0 && $ENV{copy})) {
+                $style =~ s/\bbg=([^,]+(?:,[^,]+,[^,]+\})?)/bg=#{?$c,$p,$1}/;
+            } elsif ($i == 2 && $ENV{copy}) {
+                $style =~ s/\bfg=([^,]+)/fg=#{?$c,$p,$1}/;
+            }
+            "#[$style]";
+        }ge'
+}
 for opt in window-status-format window-status-current-format; do
-    value=$(tmux show -gwv "$opt" | copy_mode=$copy_mode perl -pe 's/(?=#I\b)/$ENV{copy_mode}/')
-    tmux set -g "@focused_$opt" "$value"
-    tmux set -g "@unfocused_$opt" "$(printf '%s' "$value" | grey | text_only)"
+    value=$(tmux show -gwv "$opt")
+    tmux set -g "@focused_$opt" "$(printf '%s' "$value" | copy_mode arrows)"
+    tmux set -g "@unfocused_$opt" "$(printf '%s' "$value" | grey | text_only | copy_mode '')"
 done
 
 # Switch over in one tmux call, so the bar never shows a half-done mix (with
