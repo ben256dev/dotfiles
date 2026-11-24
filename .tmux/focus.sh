@@ -60,7 +60,9 @@ bg='#{?@editor_bg,#{@editor_bg},default}'
 # arrows (which only draw block edges) become spaces, so the text sits in the
 # same columns as when focused. The thin separators stay.
 text_only() {
-    perl -pe "s/bg=#[0-9a-f]{6}/bg=$bg/gi; s/\xee\x82[\xb0\xb2]/ /g"
+    # (Through the environment: in Perl's own code, @editor_bg would be an
+    # empty array.)
+    bg=$bg perl -pe 's/bg=#[0-9a-f]{6}/bg=$ENV{bg}/gi; s/\xee\x82[\xb0\xb2]/ /g'
 }
 
 # The theme colours the bar with status-bg/status-fg, which win over
@@ -80,8 +82,11 @@ tmux set -g @unfocused_status-left "$(printf '%s' "$left" | grey | sed "s/fg=$ba
 tmux set -g @focused_status-right "#[fg=$bar_fg,bg=$bar_bg]#{@cheatsheet_hint}   $(tmux show -gv status-right)"
 tmux set -g @unfocused_status-right ''
 
+# A tab whose pane is in copy mode has its number and name in copy mode's
+# cursor colour (@copy_mode_colour, .tmux.conf), focused or not.
+copy_mode='#{?#{==:#{pane_mode},copy-mode},#[fg=#{@copy_mode_colour}],}'
 for opt in window-status-format window-status-current-format; do
-    value=$(tmux show -gwv "$opt")
+    value=$(tmux show -gwv "$opt" | copy_mode=$copy_mode perl -pe 's/(?=#I\b)/$ENV{copy_mode}/')
     tmux set -g "@focused_$opt" "$value"
     tmux set -g "@unfocused_$opt" "$(printf '%s' "$value" | grey | text_only)"
 done
