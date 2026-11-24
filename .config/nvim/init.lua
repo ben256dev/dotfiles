@@ -443,6 +443,10 @@ end
 vim.keymap.set('n', '<leader>tt', toggle_transparent_bg, { desc = 'Toggle transparent background' })
 vim.keymap.set('n', '<leader>ll', toggle_light_mode, { desc = 'Toggle light / dark colors' })
 
+-- Space y copies to the system clipboard: the selection, or, in normal
+-- mode, like y (Space y y a line, Space y i w a word). :y+ only does lines.
+vim.keymap.set({ 'n', 'x' }, '<leader>y', '"+y', { desc = 'Copy to the clipboard' })
+
 -- Autocommands (grouped so re-sourcing this file doesn't duplicate them).
 -- Go and GDScript tab settings come from Neovim's own ftplugins.
 local augroup = vim.api.nvim_create_augroup('user_config', { clear = true })
