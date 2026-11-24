@@ -6,10 +6,10 @@ You may write and close this Cheatsheet just like any other file.
 
 Select text with `V` first.
 
-- `Space y` / `"+y` — copy the selection to the system clipboard (`:y+` copies whole lines)
+- `Space y` / `"+y` — copy selection to clipboard
 - `:w !bash` — run the selected lines as an external Bash command
 - `:!sort` — sort selected lines alphabetically
-- `Space x` — check off every `- [ ]` item in the selection, or uncheck them all if they're all checked already (Markdown files only)
+- `Space x` — toggle check off of markdown `- [ ]` item
 
 ## Normal mode
 
