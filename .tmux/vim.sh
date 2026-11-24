@@ -45,10 +45,9 @@ if [ "$1" = bind ]; then
         case $k in C-i | C-m) continue ;; esac # Tab and Enter
         add bind -T vim "$k" run-shell "$(run "key $k")"
     done
-    # Anything else (a click) leaves the vim table without a word: forget
-    # the keys when copy mode starts or ends, so they don't linger at the
-    # top right.
-    add set-hook -g pane-mode-changed 'set -pu @vim_keys'
+    # Anything else (a click) leaves the vim table without a word: the
+    # keys are forgotten when copy mode starts or ends (.tmux.conf's
+    # pane-mode-changed hook), so they don't linger at the top right.
     flush
     exit 0
 fi
