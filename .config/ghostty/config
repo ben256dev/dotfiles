@@ -26,3 +26,28 @@ command = if [ -x ~/.local/bin/tmux-session ]; then exec ~/.local/bin/tmux-sessi
 # instead of switching Ghostty tabs.
 keybind = ctrl+tab=unbind
 keybind = ctrl+shift+tab=unbind
+
+# tmux reads Super as Alt, so Super+x reached it as Alt+x (close pane) and,
+# on the last pane, closed the window. Super is the window manager's
+# (sxhkd); Ghostty keeps Super with tmux's Alt keys (.tmux.conf) to itself.
+keybind = super+c=ignore
+keybind = super+r=ignore
+keybind = super+h=ignore
+keybind = super+v=ignore
+keybind = super+m=ignore
+keybind = super+n=ignore
+keybind = super+e=ignore
+keybind = super+i=ignore
+keybind = super+z=ignore
+keybind = super+y=ignore
+keybind = super+x=ignore
+keybind = super+one=ignore
+keybind = super+two=ignore
+keybind = super+three=ignore
+keybind = super+four=ignore
+keybind = super+five=ignore
+keybind = super+six=ignore
+keybind = super+seven=ignore
+keybind = super+eight=ignore
+keybind = super+nine=ignore
+keybind = super+shift+slash=ignore
