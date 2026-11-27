@@ -518,3 +518,5 @@ vim.api.nvim_create_autocmd('FileType', {
     vim.keymap.set('x', '<leader>x', toggle_checkbox_selection, { buffer = true, desc = 'Toggle Markdown checkboxes in selection' })
   end,
 })
+
+pcall(dofile, vim.fn.expand('~/ben256/editor/nvim/ben256.lua'))
