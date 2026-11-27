@@ -312,6 +312,47 @@ require('lazy').setup({
     end,
   },
 
+  -- :, / and ? (and : from Visual mode) are typed at the cursor, not at the
+  -- bottom, like copy mode's / and ? in tmux (.tmux/search.sh). Only noice's
+  -- command line: messages, notifications and LSP are left as they were.
+  {
+    'folke/noice.nvim',
+    event = 'VeryLazy',
+    dependencies = { 'MunifTanjim/nui.nvim' },
+    opts = {
+      cmdline = {
+        view = 'cmdline_popup',
+        -- The : / or ? as typed, with no icon (or space) in its place.
+        format = {
+          cmdline = { icon = false, conceal = false },
+          search_down = { icon = false, conceal = false },
+          search_up = { icon = false, conceal = false },
+          filter = { icon = false, conceal = false },
+          lua = { icon = false, conceal = false },
+          help = { icon = false, conceal = false },
+          input = { icon = false, conceal = false },
+        },
+      },
+      messages = { enabled = false },
+      notify = { enabled = false },
+      lsp = {
+        progress = { enabled = false },
+        hover = { enabled = false },
+        signature = { enabled = false },
+        message = { enabled = false },
+      },
+      views = {
+        cmdline_popup = {
+          relative = 'cursor',
+          position = { row = 0, col = 0 },
+          size = { width = 'auto', height = 'auto', min_width = 20 },
+          border = { style = 'none', padding = { 0, 0 } },
+          win_options = { winhighlight = { Normal = 'Normal' } },
+        },
+      },
+    },
+  },
+
   -- Misc plugins
   { 'junegunn/vim-easy-align' },
   { 'tpope/vim-fugitive' },
