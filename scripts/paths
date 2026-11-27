@@ -8,6 +8,7 @@
 .tmux/battery.sh
 .tmux/focus.sh
 .tmux/vim.sh
+.tmux/search.sh
 .tmux/vim.lua
 .kmonad
 .local/bin/v
