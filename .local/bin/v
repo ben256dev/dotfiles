@@ -431,6 +431,9 @@ end
 
 vim.api.nvim_create_autocmd('VimEnter', {
   once = true,
+  -- So the file's own autocommands (filetype, highlighting) run when
+  -- switching to it loads it.
+  nested = true,
   callback = function()
     local current = vim.env.V_CURRENT
     if current and current ~= '' then
