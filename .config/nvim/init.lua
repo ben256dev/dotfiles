@@ -72,6 +72,28 @@ if vim.env.TMUX and vim.env.TMUX_PANE then
   })
 end
 
+-- Neovim reads every .asm file as GNU as (AT&T) unless the file says
+-- otherwise, so fasm's `format ELF64` or NASM's `section .text` come out
+-- wrong. Look at the first lines: fasm starts with a `format` directive, and
+-- NASM has `bits`, `section .x` or `global` with no leading dot (GNU's
+-- directives all start with one). Anything else gets Neovim's own guess.
+vim.filetype.add({
+  extension = {
+    asm = function(path, bufnr)
+      for _, line in ipairs(vim.api.nvim_buf_get_lines(bufnr, 0, 50, false)) do
+        line = line:lower()
+        if line:match('^%s*format%s+%a') then
+          return 'fasm'
+        elseif line:match('^%s*%[?bits%s+%d') or line:match('^%s*section%s+%.')
+          or line:match('^%s*global%s+[%a_]') then
+          return 'nasm'
+        end
+      end
+      return require('vim.filetype.detect').asm(path, bufnr)
+    end,
+  },
+})
+
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
 if not vim.uv.fs_stat(lazypath) then
