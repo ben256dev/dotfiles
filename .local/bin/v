@@ -2,8 +2,11 @@
 set -euo pipefail
 
 resume_line=""
+# The file to start on (v reopening the last session: the one you left).
+resume_current=""
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/v"
 last_file_path="$state_dir/last_file"
+last_current_path="$state_dir/last_current"
 missing_file_path="$state_dir/missing_file"
 missing_directory_path="$state_dir/missing_directory"
 history_file_path="$state_dir/history"
@@ -288,6 +291,41 @@ remember_session() {
   done
 
   printf '%s\n' "${full_files[@]}" > "$last_file_path"
+  rm -f -- "$last_current_path"
+}
+
+# Like .env files to refuse_env_files, so a session never holds one.
+is_env_file() {
+  case "$(basename -- "$1")" in
+    *.example | *.sample | *.template | *.dist) return 1 ;;
+    .env | .env.* | *.env) return 0 ;;
+  esac
+  return 1
+}
+
+# What Neovim left open when it quit (open_files): the file you were on,
+# then every file buffer. That's the last session now, and they all go
+# into the history, the file you were on newest.
+save_session() {
+  local session="$1" current f full_files=()
+  [ -s "$session" ] || return 0
+  { IFS= read -r current; mapfile -t opened; } < "$session"
+  for f in "${opened[@]}"; do
+    if [ -n "$f" ] && ! is_env_file "$f"; then
+      full_files+=("$(abs_path "$f")")
+    fi
+  done
+  [ "${#full_files[@]}" -gt 0 ] || return 0
+  for f in "${full_files[@]}"; do
+    if [ "$f" != "$current" ]; then
+      record_open "$f"
+    fi
+  done
+  printf '%s\n' "${full_files[@]}" > "$last_file_path"
+  if [ -n "$current" ] && ! is_env_file "$current"; then
+    record_open "$(abs_path "$current")"
+    abs_path "$current" > "$last_current_path"
+  fi
 }
 
 cache_diff() {
@@ -379,12 +417,68 @@ open_files() {
     pin_args=(-c "luafile $pin_dir/pin.lua")
   fi
 
-  if [ -n "$resume_line" ]; then
-    V_PIN_DIR="$pin_dir" nvim -c "autocmd VimEnter * ++once normal! ${resume_line}Gzz" "${pin_args[@]}" -- "${files[@]}" || true
-  else
-    # silent!: g; fails with E664 on files that have no change history yet.
-    V_PIN_DIR="$pin_dir" nvim -c 'autocmd VimEnter * ++once silent! normal! g;zz' "${pin_args[@]}" -- "${files[@]}" || true
-  fi
+  # Neovim starts on $V_CURRENT if it's one of the files, then goes to line
+  # $V_LINE, or the last change. When it quits, it writes the file you were
+  # on and every file buffer still open (those opened with :e too) to
+  # $V_SESSION_OUT: the session v reopens next time.
+  cat > "$snapshot_dir/session.lua" <<'EOF'
+local function real(name)
+  return name ~= '' and vim.uv.fs_realpath(name) or nil
+end
+local function is_file(buf)
+  return vim.bo[buf].buflisted and vim.bo[buf].buftype == '' and real(vim.api.nvim_buf_get_name(buf))
+end
+
+vim.api.nvim_create_autocmd('VimEnter', {
+  once = true,
+  callback = function()
+    local current = vim.env.V_CURRENT
+    if current and current ~= '' then
+      for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        if is_file(buf) == current then
+          vim.api.nvim_set_current_buf(buf)
+          break
+        end
+      end
+    end
+    local line = tonumber(vim.env.V_LINE or '')
+    if line then
+      vim.cmd('normal! ' .. line .. 'Gzz')
+    else
+      -- silent!: g; fails with E664 on files that have no change history yet.
+      vim.cmd('silent! normal! g;zz')
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  once = true,
+  callback = function()
+    -- The file you were on: this window's, or (from the pinned lines, say)
+    -- another window's in this tab.
+    local current
+    local wins = vim.api.nvim_tabpage_list_wins(0)
+    table.insert(wins, 1, vim.api.nvim_get_current_win())
+    for _, win in ipairs(wins) do
+      current = is_file(vim.api.nvim_win_get_buf(win))
+      if current then break end
+    end
+    local files = {}
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+      local file = is_file(buf)
+      if file then table.insert(files, file) end
+    end
+    if #files > 0 then
+      vim.fn.writefile({ current or '', unpack(files) }, vim.env.V_SESSION_OUT)
+    end
+  end,
+})
+EOF
+
+  V_PIN_DIR="$pin_dir" V_CURRENT="$resume_current" V_LINE="$resume_line" \
+    V_SESSION_OUT="$snapshot_dir/session" \
+    nvim -c "luafile $snapshot_dir/session.lua" "${pin_args[@]}" -- "${files[@]}" || true
+  save_session "$snapshot_dir/session"
 
   for i in "${!files[@]}"; do
     if [ -f "$snapshot_dir/$i" ] && [ -f "${files[$i]}" ] && ! cmp -s -- "$snapshot_dir/$i" "${files[$i]}"; then
@@ -460,7 +554,8 @@ usage() {
   cat <<'EOF'
 usage: v [FILE | QUERY]...
 
-  v                 reopen the last session (with none, pick as v . does)
+  v                 reopen the last session, on the file you left it on
+                    (with none, pick as v . does)
   v N | v -N        reopen the last session at line N
   v QUERY           open QUERY if it is a file, else fuzzy-match it
                     (exact file names win, then files with the same extension)
@@ -643,6 +738,7 @@ if [ "$source" = last ]; then
       exit 1
     fi
   done
+  [ ! -s "$last_current_path" ] || resume_current="$(cat -- "$last_current_path")"
   remember_session "${previous_files[@]}"
   open_files "${previous_files[@]}"
   exit 0
